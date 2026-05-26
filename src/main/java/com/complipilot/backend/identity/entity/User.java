@@ -1,8 +1,9 @@
-package com.complipilot.backend.organization;
+package com.complipilot.backend.identity.entity;
 
 import java.time.Instant;
 import java.util.UUID;
 
+import com.complipilot.backend.identity.enums.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,21 +14,24 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "organizations")
-public class Organization {
+@Table(name = "users")
+public class User {
 
     @Id
     private UUID id;
 
-    @Column(nullable = false, length = 200)
-    private String name;
+    @Column(nullable = false, unique = true, length = 320)
+    private String email;
 
-    @Column(nullable = false, unique = true, length = 120)
-    private String slug;
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
+    @Column(name = "full_name", nullable = false, length = 150)
+    private String fullName;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private OrganizationStatus status;
+    private UserStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -35,14 +39,15 @@ public class Organization {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected Organization() {
+    protected User() {
     }
 
-    public Organization(String name, String slug) {
+    public User(String email, String passwordHash, String fullName) {
         this.id = UUID.randomUUID();
-        this.name = name.trim();
-        this.slug = slug.toLowerCase().trim();
-        this.status = OrganizationStatus.ACTIVE;
+        this.email = email.toLowerCase().trim();
+        this.passwordHash = passwordHash;
+        this.fullName = fullName.trim();
+        this.status = UserStatus.ACTIVE;
     }
 
     @PrePersist
@@ -66,15 +71,19 @@ public class Organization {
         return id;
     }
 
-    public String getName() {
-        return name;
+    public String getEmail() {
+        return email;
     }
 
-    public String getSlug() {
-        return slug;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public OrganizationStatus getStatus() {
+    public String getFullName() {
+        return fullName;
+    }
+
+    public UserStatus getStatus() {
         return status;
     }
 
@@ -87,6 +96,6 @@ public class Organization {
     }
 
     public boolean isActive() {
-        return this.status == OrganizationStatus.ACTIVE;
+        return this.status == UserStatus.ACTIVE;
     }
 }

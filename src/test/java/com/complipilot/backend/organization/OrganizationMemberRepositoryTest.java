@@ -2,9 +2,14 @@ package com.complipilot.backend.organization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.complipilot.backend.identity.User;
-import com.complipilot.backend.identity.UserRepository;
+import com.complipilot.backend.identity.entity.User;
+import com.complipilot.backend.identity.repository.UserRepository;
 
+import com.complipilot.backend.organization.entity.Organization;
+import com.complipilot.backend.organization.entity.OrganizationMember;
+import com.complipilot.backend.organization.enums.OrganizationMemberRole;
+import com.complipilot.backend.organization.repository.OrganizationMemberRepository;
+import com.complipilot.backend.organization.repository.OrganizationRepository;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;

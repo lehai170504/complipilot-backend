@@ -1,19 +1,21 @@
-package com.complipilot.backend.identity;
+package com.complipilot.backend.identity.service;
 
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.UnauthorizedException;
 import com.complipilot.backend.common.security.JwtService;
 import com.complipilot.backend.common.util.SlugUtils;
+import com.complipilot.backend.identity.entity.User;
+import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.identity.dto.AuthUserResponse;
-import com.complipilot.backend.identity.dto.LoginRequest;
-import com.complipilot.backend.identity.dto.LoginResponse;
-import com.complipilot.backend.identity.dto.RegisterRequest;
-import com.complipilot.backend.identity.dto.RegisterResponse;
-import com.complipilot.backend.organization.Organization;
-import com.complipilot.backend.organization.OrganizationMember;
-import com.complipilot.backend.organization.OrganizationMemberRepository;
-import com.complipilot.backend.organization.OrganizationMemberRole;
-import com.complipilot.backend.organization.OrganizationRepository;
+import com.complipilot.backend.identity.dto.login.LoginRequest;
+import com.complipilot.backend.identity.dto.login.LoginResponse;
+import com.complipilot.backend.identity.dto.register.RegisterRequest;
+import com.complipilot.backend.identity.dto.register.RegisterResponse;
+import com.complipilot.backend.organization.entity.Organization;
+import com.complipilot.backend.organization.entity.OrganizationMember;
+import com.complipilot.backend.organization.repository.OrganizationMemberRepository;
+import com.complipilot.backend.organization.enums.OrganizationMemberRole;
+import com.complipilot.backend.organization.repository.OrganizationRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

@@ -1,10 +1,12 @@
-package com.complipilot.backend.organization;
+package com.complipilot.backend.organization.entity;
 
 import java.time.Instant;
 import java.util.UUID;
 
-import com.complipilot.backend.identity.User;
+import com.complipilot.backend.identity.entity.User;
 
+import com.complipilot.backend.organization.enums.OrganizationMemberRole;
+import com.complipilot.backend.organization.enums.OrganizationMemberStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

@@ -1,11 +1,12 @@
-package com.complipilot.backend.organization;
+package com.complipilot.backend.organization.repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.complipilot.backend.identity.User;
+import com.complipilot.backend.identity.entity.User;
 
+import com.complipilot.backend.organization.entity.OrganizationMember;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrganizationMemberRepository extends JpaRepository<OrganizationMember, UUID> {

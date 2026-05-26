@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.complipilot.backend.organization.OrganizationMemberRepository;
-import com.complipilot.backend.organization.OrganizationRepository;
+import com.complipilot.backend.identity.entity.User;
+import com.complipilot.backend.identity.repository.UserRepository;
+import com.complipilot.backend.organization.repository.OrganizationMemberRepository;
+import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -165,6 +168,56 @@ class AuthControllerTest {
                 )
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message", is("Invalid email or password")));
+    }
+
+    @Test
+    void shouldReturnCurrentUserWithValidAccessToken() throws Exception {
+        RegisterPayload registerPayload = new RegisterPayload(
+                "me@example.com",
+                "12345678",
+                "Me User",
+                "Me Company"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(registerPayload))
+                )
+                .andExpect(status().isCreated());
+
+        LoginPayload loginPayload = new LoginPayload(
+                "me@example.com",
+                "12345678"
+        );
+
+        String loginResponse = mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginPayload))
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String accessToken = objectMapper.readTree(loginResponse)
+                .path("accessToken")
+                .asText();
+
+        mockMvc.perform(
+                        get("/api/v1/me")
+                                .header("Authorization", "Bearer " + accessToken)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("me@example.com")))
+                .andExpect(jsonPath("$.fullName", is("Me User")));
+    }
+
+    @Test
+    void shouldRejectCurrentUserWithoutAccessToken() throws Exception {
+        mockMvc.perform(get("/api/v1/me"))
+                .andExpect(status().isUnauthorized());
     }
 
     record RegisterPayload(

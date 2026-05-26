@@ -1,6 +1,7 @@
 package com.complipilot.backend.common.security;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -8,7 +9,10 @@ import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.complipilot.backend.identity.User;
+import com.complipilot.backend.common.error.UnauthorizedException;
+import com.complipilot.backend.identity.entity.User;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,7 @@ public class JwtService {
     private final String secret;
     private final String issuer;
     private final long accessTokenExpirationSeconds;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JwtService(
             @Value("${app.jwt.secret}") String secret,
@@ -55,6 +60,49 @@ public class JwtService {
         String signature = sign(unsignedToken);
 
         return unsignedToken + "." + signature;
+    }
+
+    public AuthenticatedUser parseAndValidate(String token) {
+        try {
+            String[] parts = token.split("\\.");
+
+            if (parts.length != 3) {
+                throw new UnauthorizedException("Invalid access token");
+            }
+
+            String unsignedToken = parts[0] + "." + parts[1];
+            String expectedSignature = sign(unsignedToken);
+
+            if (!MessageDigest.isEqual(
+                    expectedSignature.getBytes(StandardCharsets.UTF_8),
+                    parts[2].getBytes(StandardCharsets.UTF_8)
+            )) {
+                throw new UnauthorizedException("Invalid access token");
+            }
+
+            byte[] payloadBytes = Base64.getUrlDecoder().decode(parts[1]);
+            JsonNode payload = objectMapper.readTree(payloadBytes);
+
+            String tokenIssuer = payload.path("iss").asText();
+            if (!issuer.equals(tokenIssuer)) {
+                throw new UnauthorizedException("Invalid access token issuer");
+            }
+
+            long expiresAt = payload.path("exp").asLong();
+            if (Instant.now().getEpochSecond() >= expiresAt) {
+                throw new UnauthorizedException("Access token expired");
+            }
+
+            UUID userId = UUID.fromString(payload.path("sub").asText());
+            String email = payload.path("email").asText();
+            String fullName = payload.path("fullName").asText();
+
+            return new AuthenticatedUser(userId, email, fullName);
+        } catch (UnauthorizedException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new UnauthorizedException("Invalid access token");
+        }
     }
 
     public long getAccessTokenExpirationSeconds() {
