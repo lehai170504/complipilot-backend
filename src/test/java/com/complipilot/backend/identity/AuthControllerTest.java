@@ -273,6 +273,17 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void shouldRejectCurrentUserWithInvalidAccessToken() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/me")
+                                .header("Authorization", "Bearer invalid-token")
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message", is("Invalid access token")))
+                .andExpect(jsonPath("$.path", is("/api/v1/me")));
+    }
+
     record RegisterPayload(
             String email,
             String password,
