@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: complipilot-backend-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-complipilot}
+      POSTGRES_USER: ${POSTGRES_USER:-complipilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - complipilot_backend_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-complipilot} -d ${POSTGRES_DB:-complipilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  complipilot_backend_postgres_data:
