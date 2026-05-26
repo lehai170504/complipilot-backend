@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.complipilot.backend.identity.entity.User;
 
 import com.complipilot.backend.organization.entity.OrganizationMember;
+import com.complipilot.backend.organization.enums.OrganizationMemberStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrganizationMemberRepository extends JpaRepository<OrganizationMember, UUID> {
@@ -18,4 +19,21 @@ public interface OrganizationMemberRepository extends JpaRepository<Organization
     Optional<OrganizationMember> findByOrganizationIdAndUserId(UUID organizationId, UUID userId);
 
     boolean existsByOrganizationIdAndUserId(UUID organizationId, UUID userId);
+
+    List<OrganizationMember> findByUser_IdAndStatus(
+            UUID userId,
+            OrganizationMemberStatus status
+    );
+
+    Optional<OrganizationMember> findByOrganization_IdAndUser_IdAndStatus(
+            UUID organizationId,
+            UUID userId,
+            OrganizationMemberStatus status
+    );
+
+    boolean existsByOrganization_IdAndUser_IdAndStatus(
+            UUID organizationId,
+            UUID userId,
+            OrganizationMemberStatus status
+    );
 }

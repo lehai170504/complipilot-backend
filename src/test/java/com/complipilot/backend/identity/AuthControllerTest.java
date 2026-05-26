@@ -220,6 +220,59 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void shouldReturnCurrentUserOrganizationsWithValidAccessToken() throws Exception {
+        RegisterPayload registerPayload = new RegisterPayload(
+                "orgs@example.com",
+                "12345678",
+                "Organizations User",
+                "Organizations Company"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(registerPayload))
+                )
+                .andExpect(status().isCreated());
+
+        LoginPayload loginPayload = new LoginPayload(
+                "orgs@example.com",
+                "12345678"
+        );
+
+        String loginResponse = mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginPayload))
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String accessToken = objectMapper.readTree(loginResponse)
+                .path("accessToken")
+                .asText();
+
+        mockMvc.perform(
+                        get("/api/v1/me/organizations")
+                                .header("Authorization", "Bearer " + accessToken)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].organizationId", notNullValue()))
+                .andExpect(jsonPath("$[0].organizationName", is("Organizations Company")))
+                .andExpect(jsonPath("$[0].organizationSlug", is("organizations-company")))
+                .andExpect(jsonPath("$[0].role", is("OWNER")))
+                .andExpect(jsonPath("$[0].status", is("ACTIVE")));
+    }
+
+    @Test
+    void shouldRejectCurrentUserOrganizationsWithoutAccessToken() throws Exception {
+        mockMvc.perform(get("/api/v1/me/organizations"))
+                .andExpect(status().isUnauthorized());
+    }
+
     record RegisterPayload(
             String email,
             String password,

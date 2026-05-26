@@ -1,7 +1,11 @@
-package com.complipilot.backend.identity.controller;
+package com.complipilot.backend.identity;
+
+import java.util.List;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
 import com.complipilot.backend.identity.dto.AuthUserResponse;
+import com.complipilot.backend.organization.service.OrganizationMembershipService;
+import com.complipilot.backend.organization.dto.OrganizationMembershipResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,6 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Current User", description = "Current authenticated user APIs")
 @RestController
 public class CurrentUserController {
+
+    private final OrganizationMembershipService organizationMembershipService;
+
+    public CurrentUserController(
+            OrganizationMembershipService organizationMembershipService
+    ) {
+        this.organizationMembershipService = organizationMembershipService;
+    }
 
     @Operation(
             summary = "Get current user",
@@ -31,6 +43,20 @@ public class CurrentUserController {
                         authenticatedUser.email(),
                         authenticatedUser.fullName()
                 )
+        );
+    }
+
+    @Operation(
+            summary = "Get current user's organizations",
+            description = "Returns active organization memberships for the authenticated user.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/me/organizations")
+    public ResponseEntity<List<OrganizationMembershipResponse>> currentUserOrganizations(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                organizationMembershipService.findActiveMemberships(authenticatedUser.id())
         );
     }
 }
