@@ -35,3 +35,15 @@ management:
 app:
   cors:
     allowed-origins: http://localhost:3000
+  jwt:
+    secret: "lehoanghai170504"
+    issuer: "complipilot-backend"
+    access-token-expiration-seconds: 3600
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui
+    operations-sorter: method
+    tags-sorter: alpha

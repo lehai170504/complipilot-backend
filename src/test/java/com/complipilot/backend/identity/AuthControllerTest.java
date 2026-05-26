@@ -103,11 +103,81 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message", is("Email is already registered")));
     }
 
+    @Test
+    void shouldLoginWithValidCredentials() throws Exception {
+        RegisterPayload registerPayload = new RegisterPayload(
+                "login@example.com",
+                "12345678",
+                "Login User",
+                "Login Company"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(registerPayload))
+                )
+                .andExpect(status().isCreated());
+
+        LoginPayload loginPayload = new LoginPayload(
+                "login@example.com",
+                "12345678"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginPayload))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andExpect(jsonPath("$.tokenType", is("Bearer")))
+                .andExpect(jsonPath("$.expiresInSeconds", is(3600)))
+                .andExpect(jsonPath("$.user.email", is("login@example.com")))
+                .andExpect(jsonPath("$.user.fullName", is("Login User")));
+    }
+
+    @Test
+    void shouldRejectLoginWithInvalidPassword() throws Exception {
+        RegisterPayload registerPayload = new RegisterPayload(
+                "invalid-password@example.com",
+                "12345678",
+                "Invalid Password User",
+                "Invalid Password Company"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(registerPayload))
+                )
+                .andExpect(status().isCreated());
+
+        LoginPayload loginPayload = new LoginPayload(
+                "invalid-password@example.com",
+                "wrong-password"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginPayload))
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message", is("Invalid email or password")));
+    }
+
     record RegisterPayload(
             String email,
             String password,
             String fullName,
             String organizationName
+    ) {
+    }
+
+    record LoginPayload(
+            String email,
+            String password
     ) {
     }
 

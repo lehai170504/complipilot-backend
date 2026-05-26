@@ -1,5 +1,7 @@
 package com.complipilot.backend.identity;
 
+import com.complipilot.backend.identity.dto.LoginRequest;
+import com.complipilot.backend.identity.dto.LoginResponse;
 import com.complipilot.backend.identity.dto.RegisterRequest;
 import com.complipilot.backend.identity.dto.RegisterResponse;
 
@@ -26,5 +28,13 @@ public class AuthController {
     ) {
         RegisterResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/api/v1/auth/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
     }
 }

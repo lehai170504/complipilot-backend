@@ -21,7 +21,11 @@ public class SecurityConfig {
                                 "/api/v1/health",
                                 "/actuator/health",
                                 "/api/v1/auth/register",
-                                "/api/v1/auth/login"
+                                "/api/v1/auth/login",
+                                "/swagger-ui",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

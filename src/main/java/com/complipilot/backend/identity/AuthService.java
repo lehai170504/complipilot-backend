@@ -1,7 +1,12 @@
 package com.complipilot.backend.identity;
 
 import com.complipilot.backend.common.error.ConflictException;
+import com.complipilot.backend.common.error.UnauthorizedException;
+import com.complipilot.backend.common.security.JwtService;
 import com.complipilot.backend.common.util.SlugUtils;
+import com.complipilot.backend.identity.dto.AuthUserResponse;
+import com.complipilot.backend.identity.dto.LoginRequest;
+import com.complipilot.backend.identity.dto.LoginResponse;
 import com.complipilot.backend.identity.dto.RegisterRequest;
 import com.complipilot.backend.identity.dto.RegisterResponse;
 import com.complipilot.backend.organization.Organization;
@@ -21,17 +26,20 @@ public class AuthService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthService(
             UserRepository userRepository,
             OrganizationRepository organizationRepository,
             OrganizationMemberRepository organizationMemberRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.organizationRepository = organizationRepository;
         this.organizationMemberRepository = organizationMemberRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -77,6 +85,35 @@ public class AuthService {
                 user.getFullName(),
                 organization.getName(),
                 OrganizationMemberRole.OWNER
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest request) {
+        String normalizedEmail = request.email().toLowerCase().trim();
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+
+        if (!user.isActive()) {
+            throw new UnauthorizedException("User account is disabled");
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new UnauthorizedException("Invalid email or password");
+        }
+
+        String accessToken = jwtService.generateAccessToken(user);
+
+        return new LoginResponse(
+                accessToken,
+                "Bearer",
+                jwtService.getAccessTokenExpirationSeconds(),
+                new AuthUserResponse(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getFullName()
+                )
         );
     }
 
