@@ -17,16 +17,10 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@Import(TenantAccessServiceTest.TestcontainersConfig.class)
+@ActiveProfiles("test")
 class TenantAccessServiceTest {
 
     @Autowired
@@ -171,15 +165,4 @@ class TenantAccessServiceTest {
                 .hasMessage("You do not have permission to perform this action");
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
-    static class TestcontainersConfig {
-
-        @Bean
-        @ServiceConnection
-        PostgreSQLContainer<?> postgresContainer() {
-            return new PostgreSQLContainer<>(
-                    DockerImageName.parse("postgres:16-alpine")
-            );
-        }
-    }
 }
