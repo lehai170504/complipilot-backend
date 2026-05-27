@@ -1,10 +1,12 @@
 package com.complipilot.backend.compliance.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
+import com.complipilot.backend.compliance.dto.framework.ApplyFrameworkResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CompanyComplianceItemResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CreateCompanyComplianceItemRequest;
 import com.complipilot.backend.compliance.dto.framework.CreateFrameworkRequest;
@@ -21,7 +23,6 @@ import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
-import com.complipilot.backend.organization.service.TenantAccessService;
 import com.complipilot.backend.organization.service.TenantAccessService;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 
@@ -236,6 +237,58 @@ public class ComplianceService {
         );
 
         return toCompanyComplianceItemResponse(item);
+    }
+
+    @Transactional
+    public ApplyFrameworkResponse applyFrameworkToOrganization(
+            UUID organizationId,
+            UUID frameworkId,
+            UUID currentUserId
+    ) {
+        tenantAccessService.requireManagerRole(organizationId, currentUserId);
+
+        Organization organization = organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization not found"));
+
+        if (!frameworkRepository.existsById(frameworkId)) {
+            throw new NotFoundException("Compliance framework not found");
+        }
+
+        List<ComplianceRequirement> requirements =
+                requirementRepository.findByFramework_IdOrderBySortOrderAsc(frameworkId);
+
+        List<CompanyComplianceItemResponse> createdItems = new ArrayList<>();
+        int skippedCount = 0;
+
+        for (ComplianceRequirement requirement : requirements) {
+            boolean alreadyExists = companyComplianceItemRepository
+                    .existsByOrganization_IdAndRequirement_Id(
+                            organizationId,
+                            requirement.getId()
+                    );
+
+            if (alreadyExists) {
+                skippedCount++;
+                continue;
+            }
+
+            CompanyComplianceItem item = companyComplianceItemRepository.save(
+                    new CompanyComplianceItem(
+                            organization,
+                            requirement
+                    )
+            );
+
+            createdItems.add(toCompanyComplianceItemResponse(item));
+        }
+
+        return new ApplyFrameworkResponse(
+                organizationId,
+                frameworkId,
+                createdItems.size(),
+                skippedCount,
+                createdItems
+        );
     }
 
     @Transactional(readOnly = true)

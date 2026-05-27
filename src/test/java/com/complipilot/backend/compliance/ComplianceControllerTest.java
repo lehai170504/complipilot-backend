@@ -345,6 +345,134 @@ class ComplianceControllerTest {
                 .andExpect(jsonPath("$[4].code", is("SEC-005")));
     }
 
+    @Test
+    void shouldApplyFrameworkToOrganizationAndCreateComplianceItems() throws Exception {
+        AuthSession session = registerAndLogin(
+                "apply-framework@example.com",
+                "Apply Framework User",
+                "Apply Framework Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.organizationId", is(session.organizationId())))
+                .andExpect(jsonPath("$.frameworkId", is(frameworkId)))
+                .andExpect(jsonPath("$.createdCount", is(5)))
+                .andExpect(jsonPath("$.skippedCount", is(0)))
+                .andExpect(jsonPath("$.createdItems[0].status", is("OPEN")))
+                .andExpect(jsonPath("$.createdItems[0].requirementCode", is("SEC-001")));
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", is(5)));
+    }
+
+    @Test
+    void shouldSkipExistingItemsWhenApplyingFrameworkAgain() throws Exception {
+        AuthSession session = registerAndLogin(
+                "apply-framework-again@example.com",
+                "Apply Again User",
+                "Apply Again Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdCount", is(5)))
+                .andExpect(jsonPath("$.skippedCount", is(0)));
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdCount", is(0)))
+                .andExpect(jsonPath("$.skippedCount", is(5)))
+                .andExpect(jsonPath("$.createdItems.length()", is(0)));
+    }
+
+    @Test
+    void shouldRejectApplyingFrameworkToAnotherOrganization() throws Exception {
+        AuthSession ownerA = registerAndLogin(
+                "apply-owner-a@example.com",
+                "Apply Owner A",
+                "Apply Owner A Company"
+        );
+
+        AuthSession ownerB = registerAndLogin(
+                "apply-owner-b@example.com",
+                "Apply Owner B",
+                "Apply Owner B Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + ownerA.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                ownerA.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + ownerB.accessToken())
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message", is("You do not have access to this organization")));
+    }
+
     private AuthSession registerAndLogin(
             String email,
             String fullName,

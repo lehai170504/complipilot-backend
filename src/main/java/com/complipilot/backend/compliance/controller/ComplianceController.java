@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
+import com.complipilot.backend.compliance.dto.framework.ApplyFrameworkResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CompanyComplianceItemResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CreateCompanyComplianceItemRequest;
 import com.complipilot.backend.compliance.dto.framework.CreateFrameworkRequest;
@@ -96,6 +97,26 @@ public class ComplianceController {
     @PostMapping("/api/v1/compliance/frameworks/seed/security-baseline")
     public ResponseEntity<FrameworkResponse> seedSecurityBaselineTemplate() {
         FrameworkResponse response = complianceService.seedSecurityBaselineTemplate();
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(
+            summary = "Apply framework to organization",
+            description = "Creates company compliance items for all requirements in the selected framework. Existing items are skipped.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PostMapping("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply")
+    public ResponseEntity<ApplyFrameworkResponse> applyFrameworkToOrganization(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID frameworkId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        ApplyFrameworkResponse response = complianceService.applyFrameworkToOrganization(
+                organizationId,
+                frameworkId,
+                authenticatedUser.id()
+        );
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
