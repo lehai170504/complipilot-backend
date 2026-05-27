@@ -189,6 +189,126 @@ class ComplianceControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void shouldRejectInvalidComplianceStatusTransition() throws Exception {
+        AuthSession session = registerAndLogin(
+                "invalid-transition@example.com",
+                "Invalid Transition User",
+                "Invalid Transition Company"
+        );
+
+        String frameworkId = createFramework(
+                session.accessToken(),
+                "INVALID-TRANSITION",
+                "Invalid Transition Framework"
+        );
+
+        String requirementId = createRequirement(
+                session.accessToken(),
+                frameworkId,
+                "INVALID-001",
+                "Invalid transition requirement"
+        );
+
+        String itemId = createCompanyComplianceItem(
+                session.accessToken(),
+                session.organizationId(),
+                requirementId
+        );
+
+        String updateBody = """
+                {
+                  "status": "COMPLIANT",
+                  "ownerUserId": null,
+                  "dueDate": null,
+                  "notes": "Trying to jump directly from OPEN to COMPLIANT."
+                }
+                """;
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                itemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(updateBody)
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", is("Invalid compliance status transition from OPEN to COMPLIANT")));
+    }
+
+    @Test
+    void shouldAllowValidComplianceStatusTransitionToReadyForReview() throws Exception {
+        AuthSession session = registerAndLogin(
+                "valid-transition@example.com",
+                "Valid Transition User",
+                "Valid Transition Company"
+        );
+
+        String frameworkId = createFramework(
+                session.accessToken(),
+                "VALID-TRANSITION",
+                "Valid Transition Framework"
+        );
+
+        String requirementId = createRequirement(
+                session.accessToken(),
+                frameworkId,
+                "VALID-001",
+                "Valid transition requirement"
+        );
+
+        String itemId = createCompanyComplianceItem(
+                session.accessToken(),
+                session.organizationId(),
+                requirementId
+        );
+
+        String inProgressBody = """
+                {
+                  "status": "IN_PROGRESS",
+                  "ownerUserId": null,
+                  "dueDate": null,
+                  "notes": "Implementation started."
+                }
+                """;
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                itemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(inProgressBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("IN_PROGRESS")));
+
+        String readyForReviewBody = """
+                {
+                  "status": "READY_FOR_REVIEW",
+                  "ownerUserId": null,
+                  "dueDate": null,
+                  "notes": "Ready for compliance review."
+                }
+                """;
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                itemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(readyForReviewBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("READY_FOR_REVIEW")))
+                .andExpect(jsonPath("$.notes", is("Ready for compliance review.")));
+    }
+
     private AuthSession registerAndLogin(
             String email,
             String fullName,

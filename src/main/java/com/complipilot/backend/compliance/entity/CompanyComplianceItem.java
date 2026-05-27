@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.complipilot.backend.compliance.CompanyComplianceStatusWorkflow;
 import com.complipilot.backend.compliance.enums.CompanyComplianceStatus;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.organization.entity.Organization;
@@ -95,6 +96,7 @@ public class CompanyComplianceItem {
     }
 
     public void updateStatus(CompanyComplianceStatus status) {
+        CompanyComplianceStatusWorkflow.validateTransition(this.status, status);
         this.status = status;
     }
 
