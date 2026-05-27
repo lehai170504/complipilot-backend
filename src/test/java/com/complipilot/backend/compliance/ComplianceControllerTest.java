@@ -1,0 +1,334 @@
+package com.complipilot.backend.compliance;
+
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import org.junit.jupiter.api.Test;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class ComplianceControllerTest {
+
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void shouldCreateFrameworkRequirementAndCompanyComplianceItem() throws Exception {
+        AuthSession session = registerAndLogin(
+                "compliance-flow@example.com",
+                "Compliance Flow User",
+                "Compliance Flow Company"
+        );
+
+        String frameworkId = createFramework(
+                session.accessToken(),
+                "FLOW-SEC",
+                "Flow Security Framework"
+        );
+
+        String requirementId = createRequirement(
+                session.accessToken(),
+                frameworkId,
+                "FLOW-001",
+                "Enable MFA"
+        );
+
+        String itemId = createCompanyComplianceItem(
+                session.accessToken(),
+                session.organizationId(),
+                requirementId
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id", is(itemId)))
+                .andExpect(jsonPath("$[0].organizationId", is(session.organizationId())))
+                .andExpect(jsonPath("$[0].requirementId", is(requirementId)))
+                .andExpect(jsonPath("$[0].requirementCode", is("FLOW-001")))
+                .andExpect(jsonPath("$[0].requirementTitle", is("Enable MFA")))
+                .andExpect(jsonPath("$[0].status", is("OPEN")));
+
+        String updateBody = """
+                {
+                  "status": "IN_PROGRESS",
+                  "ownerUserId": null,
+                  "dueDate": "2026-06-30",
+                  "notes": "Started MFA rollout."
+                }
+                """;
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                itemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(updateBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("IN_PROGRESS")))
+                .andExpect(jsonPath("$.dueDate", is("2026-06-30")))
+                .andExpect(jsonPath("$.notes", is("Started MFA rollout.")));
+    }
+
+    @Test
+    void shouldRejectCreatingDuplicateCompanyComplianceItem() throws Exception {
+        AuthSession session = registerAndLogin(
+                "duplicate-item@example.com",
+                "Duplicate Item User",
+                "Duplicate Item Company"
+        );
+
+        String frameworkId = createFramework(
+                session.accessToken(),
+                "DUP-SEC",
+                "Duplicate Framework"
+        );
+
+        String requirementId = createRequirement(
+                session.accessToken(),
+                frameworkId,
+                "DUP-001",
+                "Duplicate requirement"
+        );
+
+        createCompanyComplianceItem(
+                session.accessToken(),
+                session.organizationId(),
+                requirementId
+        );
+
+        String body = """
+                {
+                  "requirementId": "%s"
+                }
+                """.formatted(requirementId);
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", is("Compliance item already exists for this organization and requirement")));
+    }
+
+    @Test
+    void shouldPreventTenantDataAccessAcrossOrganizations() throws Exception {
+        AuthSession ownerA = registerAndLogin(
+                "tenant-a@example.com",
+                "Tenant A Owner",
+                "Tenant A Company"
+        );
+
+        AuthSession ownerB = registerAndLogin(
+                "tenant-b@example.com",
+                "Tenant B Owner",
+                "Tenant B Company"
+        );
+
+        String frameworkId = createFramework(
+                ownerA.accessToken(),
+                "TENANT-SEC",
+                "Tenant Security Framework"
+        );
+
+        String requirementId = createRequirement(
+                ownerA.accessToken(),
+                frameworkId,
+                "TENANT-001",
+                "Tenant isolated requirement"
+        );
+
+        createCompanyComplianceItem(
+                ownerA.accessToken(),
+                ownerA.organizationId(),
+                requirementId
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", ownerA.organizationId())
+                                .header("Authorization", "Bearer " + ownerB.accessToken())
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message", is("You do not have access to this organization")));
+    }
+
+    @Test
+    void shouldRejectComplianceItemsWithoutAccessToken() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items",
+                                "00000000-0000-0000-0000-000000000000"
+                        )
+                )
+                .andExpect(status().isUnauthorized());
+    }
+
+    private AuthSession registerAndLogin(
+            String email,
+            String fullName,
+            String organizationName
+    ) throws Exception {
+        String registerBody = """
+                {
+                  "email": "%s",
+                  "password": "12345678",
+                  "fullName": "%s",
+                  "organizationName": "%s"
+                }
+                """.formatted(email, fullName, organizationName);
+
+        String registerResponse = mockMvc.perform(
+                        post("/api/v1/auth/register")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(registerBody)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.organizationId", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode registerJson = objectMapper.readTree(registerResponse);
+        String organizationId = registerJson.path("organizationId").asText();
+
+        String loginBody = """
+                {
+                  "email": "%s",
+                  "password": "12345678"
+                }
+                """.formatted(email);
+
+        String loginResponse = mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(loginBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode loginJson = objectMapper.readTree(loginResponse);
+        String accessToken = loginJson.path("accessToken").asText();
+
+        return new AuthSession(accessToken, organizationId);
+    }
+
+    private String createFramework(
+            String accessToken,
+            String code,
+            String name
+    ) throws Exception {
+        String body = """
+                {
+                  "code": "%s",
+                  "name": "%s",
+                  "description": "Framework created during integration test."
+                }
+                """.formatted(code, name);
+
+        String response = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks")
+                                .header("Authorization", "Bearer " + accessToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).path("id").asText();
+    }
+
+    private String createRequirement(
+            String accessToken,
+            String frameworkId,
+            String code,
+            String title
+    ) throws Exception {
+        String body = """
+                {
+                  "code": "%s",
+                  "title": "%s",
+                  "description": "Requirement created during integration test.",
+                  "category": "Security",
+                  "sortOrder": 1
+                }
+                """.formatted(code, title);
+
+        String response = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/{frameworkId}/requirements", frameworkId)
+                                .header("Authorization", "Bearer " + accessToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).path("id").asText();
+    }
+
+    private String createCompanyComplianceItem(
+            String accessToken,
+            String organizationId,
+            String requirementId
+    ) throws Exception {
+        String body = """
+                {
+                  "requirementId": "%s"
+                }
+                """.formatted(requirementId);
+
+        String response = mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-items", organizationId)
+                                .header("Authorization", "Bearer " + accessToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).path("id").asText();
+    }
+
+    record AuthSession(
+            String accessToken,
+            String organizationId
+    ) {
+    }
+}
