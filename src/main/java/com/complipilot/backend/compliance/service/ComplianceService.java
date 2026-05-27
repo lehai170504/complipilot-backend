@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
+import com.complipilot.backend.compliance.dto.ComplianceSummaryResponse;
 import com.complipilot.backend.compliance.dto.framework.ApplyFrameworkResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CompanyComplianceItemResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CreateCompanyComplianceItemRequest;
@@ -16,6 +17,7 @@ import com.complipilot.backend.compliance.dto.requirement.RequirementResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.UpdateCompanyComplianceItemRequest;
 import com.complipilot.backend.compliance.entity.ComplianceFramework;
 import com.complipilot.backend.compliance.entity.ComplianceRequirement;
+import com.complipilot.backend.compliance.enums.CompanyComplianceStatus;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
 import com.complipilot.backend.compliance.repository.ComplianceFrameworkRepository;
 import com.complipilot.backend.compliance.repository.ComplianceRequirementRepository;
@@ -302,6 +304,45 @@ public class ComplianceService {
                 .stream()
                 .map(this::toCompanyComplianceItemResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ComplianceSummaryResponse getComplianceSummary(
+            UUID organizationId,
+            UUID currentUserId
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+
+        long totalItems = companyComplianceItemRepository.countByOrganization_Id(organizationId);
+
+        return new ComplianceSummaryResponse(
+                organizationId,
+                totalItems,
+                companyComplianceItemRepository.countByOrganization_IdAndStatus(
+                        organizationId,
+                        CompanyComplianceStatus.OPEN
+                ),
+                companyComplianceItemRepository.countByOrganization_IdAndStatus(
+                        organizationId,
+                        CompanyComplianceStatus.IN_PROGRESS
+                ),
+                companyComplianceItemRepository.countByOrganization_IdAndStatus(
+                        organizationId,
+                        CompanyComplianceStatus.READY_FOR_REVIEW
+                ),
+                companyComplianceItemRepository.countByOrganization_IdAndStatus(
+                        organizationId,
+                        CompanyComplianceStatus.COMPLIANT
+                ),
+                companyComplianceItemRepository.countByOrganization_IdAndStatus(
+                        organizationId,
+                        CompanyComplianceStatus.NON_COMPLIANT
+                ),
+                companyComplianceItemRepository.countByOrganization_IdAndStatus(
+                        organizationId,
+                        CompanyComplianceStatus.WAIVED
+                )
+        );
     }
 
     @Transactional

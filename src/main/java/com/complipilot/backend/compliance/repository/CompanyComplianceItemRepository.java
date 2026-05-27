@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
+import com.complipilot.backend.compliance.enums.CompanyComplianceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CompanyComplianceItemRepository extends JpaRepository<CompanyComplianceItem, UUID> {
@@ -19,5 +20,12 @@ public interface CompanyComplianceItemRepository extends JpaRepository<CompanyCo
     boolean existsByOrganization_IdAndRequirement_Id(
             UUID organizationId,
             UUID requirementId
+    );
+
+    long countByOrganization_Id(UUID organizationId);
+
+    long countByOrganization_IdAndStatus(
+            UUID organizationId,
+            CompanyComplianceStatus status
     );
 }

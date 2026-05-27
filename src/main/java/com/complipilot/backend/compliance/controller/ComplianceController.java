@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
+import com.complipilot.backend.compliance.dto.ComplianceSummaryResponse;
 import com.complipilot.backend.compliance.dto.framework.ApplyFrameworkResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CompanyComplianceItemResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CreateCompanyComplianceItemRequest;
@@ -174,6 +175,24 @@ public class ComplianceController {
                         itemId,
                         authenticatedUser.id(),
                         request
+                )
+        );
+    }
+
+    @Operation(
+            summary = "Get organization compliance summary",
+            description = "Returns compliance item counts grouped by status for the organization.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/organizations/{organizationId}/compliance-summary")
+    public ResponseEntity<ComplianceSummaryResponse> getComplianceSummary(
+            @PathVariable UUID organizationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                complianceService.getComplianceSummary(
+                        organizationId,
+                        authenticatedUser.id()
                 )
         );
     }

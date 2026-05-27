@@ -473,6 +473,109 @@ class ComplianceControllerTest {
                 .andExpect(jsonPath("$.message", is("You do not have access to this organization")));
     }
 
+    @Test
+    void shouldReturnComplianceSummaryByStatus() throws Exception {
+        AuthSession session = registerAndLogin(
+                "summary@example.com",
+                "Summary User",
+                "Summary Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdCount", is(5)));
+
+        String itemsResponse = mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String firstItemId = objectMapper.readTree(itemsResponse)
+                .get(0)
+                .path("id")
+                .asText();
+
+        String updateBody = """
+            {
+              "status": "IN_PROGRESS",
+              "ownerUserId": null,
+              "dueDate": null,
+              "notes": "Started first control."
+            }
+            """;
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                firstItemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(updateBody)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("IN_PROGRESS")));
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-summary", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organizationId", is(session.organizationId())))
+                .andExpect(jsonPath("$.totalItems", is(5)))
+                .andExpect(jsonPath("$.open", is(4)))
+                .andExpect(jsonPath("$.inProgress", is(1)))
+                .andExpect(jsonPath("$.readyForReview", is(0)))
+                .andExpect(jsonPath("$.compliant", is(0)))
+                .andExpect(jsonPath("$.nonCompliant", is(0)))
+                .andExpect(jsonPath("$.waived", is(0)));
+    }
+
+    @Test
+    void shouldRejectComplianceSummaryForAnotherOrganization() throws Exception {
+        AuthSession ownerA = registerAndLogin(
+                "summary-owner-a@example.com",
+                "Summary Owner A",
+                "Summary Owner A Company"
+        );
+
+        AuthSession ownerB = registerAndLogin(
+                "summary-owner-b@example.com",
+                "Summary Owner B",
+                "Summary Owner B Company"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-summary", ownerA.organizationId())
+                                .header("Authorization", "Bearer " + ownerB.accessToken())
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message", is("You do not have access to this organization")));
+    }
+
     private AuthSession registerAndLogin(
             String email,
             String fullName,
