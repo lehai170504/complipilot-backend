@@ -309,6 +309,42 @@ class ComplianceControllerTest {
                 .andExpect(jsonPath("$.notes", is("Ready for compliance review.")));
     }
 
+    @Test
+    void shouldSeedSecurityBaselineTemplate() throws Exception {
+        AuthSession session = registerAndLogin(
+                "seed-template@example.com",
+                "Seed Template User",
+                "Seed Template Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.code", is("SME-SECURITY-BASELINE")))
+                .andExpect(jsonPath("$.name", is("SME Security Baseline")))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        get("/api/v1/compliance/frameworks/{frameworkId}/requirements", frameworkId)
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code", is("SEC-001")))
+                .andExpect(jsonPath("$[1].code", is("SEC-002")))
+                .andExpect(jsonPath("$[2].code", is("SEC-003")))
+                .andExpect(jsonPath("$[3].code", is("SEC-004")))
+                .andExpect(jsonPath("$[4].code", is("SEC-005")));
+    }
+
     private AuthSession registerAndLogin(
             String email,
             String fullName,

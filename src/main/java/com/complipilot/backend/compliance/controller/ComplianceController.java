@@ -89,6 +89,17 @@ public class ComplianceController {
     }
 
     @Operation(
+            summary = "Seed SME Security Baseline template",
+            description = "Creates a starter compliance framework and baseline requirements for local development/demo.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PostMapping("/api/v1/compliance/frameworks/seed/security-baseline")
+    public ResponseEntity<FrameworkResponse> seedSecurityBaselineTemplate() {
+        FrameworkResponse response = complianceService.seedSecurityBaselineTemplate();
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(
             summary = "Create company compliance item",
             description = "Creates a compliance tracking item for an organization and a requirement.",
             security = @SecurityRequirement(name = "bearerAuth")

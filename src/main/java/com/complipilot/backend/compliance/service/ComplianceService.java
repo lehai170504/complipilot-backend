@@ -83,6 +83,97 @@ public class ComplianceService {
     }
 
     @Transactional
+    public FrameworkResponse seedSecurityBaselineTemplate() {
+        String frameworkCode = "SME-SECURITY-BASELINE";
+
+        ComplianceFramework framework = frameworkRepository.findByCodeIgnoreCase(frameworkCode)
+                .orElseGet(() -> frameworkRepository.save(
+                        new ComplianceFramework(
+                                frameworkCode,
+                                "SME Security Baseline",
+                                "A practical security baseline framework for small and medium-sized organizations.",
+                                true
+                        )
+                ));
+
+        seedRequirementIfMissing(
+                framework,
+                "SEC-001",
+                "Enable multi-factor authentication",
+                "All privileged and administrator accounts should use multi-factor authentication.",
+                "Access Control",
+                1
+        );
+
+        seedRequirementIfMissing(
+                framework,
+                "SEC-002",
+                "Maintain user access review",
+                "User access should be reviewed periodically to remove inactive or unnecessary access.",
+                "Access Control",
+                2
+        );
+
+        seedRequirementIfMissing(
+                framework,
+                "SEC-003",
+                "Keep evidence for critical controls",
+                "Evidence documents should be collected and retained for key compliance controls.",
+                "Evidence Management",
+                3
+        );
+
+        seedRequirementIfMissing(
+                framework,
+                "SEC-004",
+                "Define incident response contact",
+                "The organization should define responsible contacts for security incidents.",
+                "Incident Response",
+                4
+        );
+
+        seedRequirementIfMissing(
+                framework,
+                "SEC-005",
+                "Backup critical business data",
+                "Critical business data should be backed up and recoverable.",
+                "Business Continuity",
+                5
+        );
+
+        return toFrameworkResponse(framework);
+    }
+
+    private void seedRequirementIfMissing(
+            ComplianceFramework framework,
+            String code,
+            String title,
+            String description,
+            String category,
+            int sortOrder
+    ) {
+        boolean exists = requirementRepository
+                .findByFramework_IdOrderBySortOrderAsc(framework.getId())
+                .stream()
+                .anyMatch(requirement -> requirement.getCode().equalsIgnoreCase(code));
+
+        if (exists) {
+            return;
+        }
+
+        requirementRepository.save(
+                new ComplianceRequirement(
+                        framework,
+                        code,
+                        title,
+                        description,
+                        category,
+                        sortOrder
+                )
+        );
+    }
+
+    @Transactional
     public RequirementResponse createRequirement(
             UUID frameworkId,
             CreateRequirementRequest request
