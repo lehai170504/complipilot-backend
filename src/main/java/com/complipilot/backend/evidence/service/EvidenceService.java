@@ -23,6 +23,11 @@ import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.organization.service.TenantAccessService;
+import com.complipilot.backend.common.storage.StorageProperties;
+import com.complipilot.backend.common.storage.StorageService;
+import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlRequest;
+import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlResponse;
+import com.complipilot.backend.evidence.dto.EvidenceDownloadUrlResponse;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +41,8 @@ public class EvidenceService {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final TenantAccessService tenantAccessService;
+    private final StorageService storageService;
+    private final StorageProperties storageProperties;
 
     public EvidenceService(
             EvidenceDocumentRepository evidenceDocumentRepository,
@@ -43,7 +50,9 @@ public class EvidenceService {
             CompanyComplianceItemRepository complianceItemRepository,
             OrganizationRepository organizationRepository,
             UserRepository userRepository,
-            TenantAccessService tenantAccessService
+            TenantAccessService tenantAccessService,
+            StorageService storageService,
+            StorageProperties storageProperties
     ) {
         this.evidenceDocumentRepository = evidenceDocumentRepository;
         this.evidenceLinkRepository = evidenceLinkRepository;
@@ -51,6 +60,8 @@ public class EvidenceService {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.tenantAccessService = tenantAccessService;
+        this.storageService = storageService;
+        this.storageProperties = storageProperties;
     }
 
     @Transactional
@@ -228,6 +239,63 @@ public class EvidenceService {
                 .orElseThrow(() -> new NotFoundException("Evidence link not found"));
 
         evidenceLinkRepository.delete(link);
+    }
+
+    @Transactional(readOnly = true)
+    public CreateEvidenceUploadUrlResponse createUploadUrl(
+            UUID organizationId,
+            UUID currentUserId,
+            CreateEvidenceUploadUrlRequest request
+    ) {
+        tenantAccessService.requireManagerRole(organizationId, currentUserId);
+
+        String objectKey = storageService.generateEvidenceObjectKey(
+                organizationId,
+                request.filename()
+        );
+
+        String uploadUrl = storageService.createPresignedUploadUrl(
+                objectKey,
+                request.contentType()
+        );
+
+        return new CreateEvidenceUploadUrlResponse(
+                objectKey,
+                uploadUrl,
+                "PUT",
+                storageProperties.presignedUrlExpirationMinutes()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public EvidenceDownloadUrlResponse createDownloadUrl(
+            UUID organizationId,
+            UUID evidenceId,
+            UUID currentUserId
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+
+        EvidenceDocument evidenceDocument = evidenceDocumentRepository
+                .findByIdAndOrganization_Id(evidenceId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Evidence document not found"));
+
+        if (evidenceDocument.getSourceType() != EvidenceSourceType.FILE) {
+            throw new ConflictException("Download URL is only available for file evidence");
+        }
+
+        if (evidenceDocument.getStatus() != EvidenceStatus.ACTIVE) {
+            throw new ConflictException("Only active evidence can be downloaded");
+        }
+
+        String downloadUrl = storageService.createPresignedDownloadUrl(
+                evidenceDocument.getFileObjectKey()
+        );
+
+        return new EvidenceDownloadUrlResponse(
+                downloadUrl,
+                "GET",
+                storageProperties.presignedUrlExpirationMinutes()
+        );
     }
 
     private void validateEvidenceSource(

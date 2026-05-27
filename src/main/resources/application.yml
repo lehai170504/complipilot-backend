@@ -39,6 +39,13 @@ app:
     secret: "lehoanghai170504"
     issuer: "complipilot-backend"
     access-token-expiration-seconds: 3600
+  storage:
+    endpoint: "${MINIO_ENDPOINT:http://localhost:9000}"
+    access-key: "${MINIO_ACCESS_KEY:complipilot}"
+    secret-key: "${MINIO_SECRET_KEY:complipilot_minio_password}"
+    bucket: "${MINIO_BUCKET_EVIDENCE:complipilot-evidence}"
+    public-endpoint: "${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}"
+    presigned-url-expiration-minutes: 15
 
 springdoc:
   api-docs:

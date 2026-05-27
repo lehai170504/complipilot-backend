@@ -9,6 +9,9 @@ import com.complipilot.backend.evidence.dto.CreateEvidenceDocumentRequest;
 import com.complipilot.backend.evidence.dto.EvidenceDocumentResponse;
 import com.complipilot.backend.evidence.dto.LinkEvidenceRequest;
 import com.complipilot.backend.evidence.dto.UpdateEvidenceDocumentRequest;
+import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlRequest;
+import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlResponse;
+import com.complipilot.backend.evidence.dto.EvidenceDownloadUrlResponse;
 
 import com.complipilot.backend.evidence.service.EvidenceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -173,5 +176,44 @@ public class EvidenceController {
         );
 
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Create presigned upload URL for evidence file",
+            description = "Returns a presigned PUT URL and object key. The frontend uploads the file directly to object storage.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PostMapping("/api/v1/organizations/{organizationId}/evidence/upload-url")
+    public ResponseEntity<CreateEvidenceUploadUrlResponse> createUploadUrl(
+            @PathVariable UUID organizationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @Valid @RequestBody CreateEvidenceUploadUrlRequest request
+    ) {
+        return ResponseEntity.ok(
+                evidenceService.createUploadUrl(
+                        organizationId,
+                        authenticatedUser.id(),
+                        request
+                )
+        );
+    }
+
+    @Operation(
+            summary = "Create presigned download URL for file evidence",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PostMapping("/api/v1/organizations/{organizationId}/evidence/{evidenceId}/download-url")
+    public ResponseEntity<EvidenceDownloadUrlResponse> createDownloadUrl(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID evidenceId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                evidenceService.createDownloadUrl(
+                        organizationId,
+                        evidenceId,
+                        authenticatedUser.id()
+                )
+        );
     }
 }
