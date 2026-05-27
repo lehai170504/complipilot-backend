@@ -8,6 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+
+import com.complipilot.backend.common.storage.StorageService;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +38,9 @@ class EvidenceControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private StorageService storageService;
 
     @Test
     void shouldCreateListUpdateAndArchiveEvidenceDocument() throws Exception {
@@ -330,6 +339,130 @@ class EvidenceControllerTest {
                 session.organizationId(),
                 firstComplianceItemId
         );
+    }
+
+    @Test
+    void shouldCreatePresignedUploadUrl() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "upload-url@example.com",
+                "Upload Url User",
+                "Upload Url Company"
+        );
+
+        when(storageService.generateEvidenceObjectKey(
+                eq(java.util.UUID.fromString(workspace.organizationId())),
+                eq("mfa-policy.pdf")
+        )).thenReturn(
+                "organizations/%s/evidence/test-mfa-policy.pdf".formatted(workspace.organizationId())
+        );
+
+        when(storageService.createPresignedUploadUrl(
+                eq("organizations/%s/evidence/test-mfa-policy.pdf".formatted(workspace.organizationId())),
+                eq("application/pdf")
+        )).thenReturn("http://localhost:9000/presigned-upload-url");
+
+        String body = """
+            {
+              "filename": "mfa-policy.pdf",
+              "contentType": "application/pdf"
+            }
+            """;
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/evidence/upload-url", workspace.organizationId())
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.objectKey", is("organizations/%s/evidence/test-mfa-policy.pdf".formatted(workspace.organizationId()))))
+                .andExpect(jsonPath("$.uploadUrl", is("http://localhost:9000/presigned-upload-url")))
+                .andExpect(jsonPath("$.method", is("PUT")))
+                .andExpect(jsonPath("$.expiresInMinutes", is(15)));
+    }
+
+    @Test
+    void shouldCreatePresignedDownloadUrlForFileEvidence() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "download-url@example.com",
+                "Download Url User",
+                "Download Url Company"
+        );
+
+        String objectKey = "organizations/%s/evidence/test-download.pdf"
+                .formatted(workspace.organizationId());
+
+        String evidenceBody = """
+            {
+              "title": "Downloadable PDF evidence",
+              "description": "File evidence for download URL test.",
+              "evidenceType": "POLICY",
+              "sourceType": "FILE",
+              "fileObjectKey": "%s",
+              "externalUrl": null,
+              "contentType": "application/pdf",
+              "fileSizeBytes": 12345
+            }
+            """.formatted(objectKey);
+
+        String evidenceResponse = mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/evidence", workspace.organizationId())
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(evidenceBody)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andExpect(jsonPath("$.sourceType", is("FILE")))
+                .andExpect(jsonPath("$.fileObjectKey", is(objectKey)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String evidenceId = objectMapper.readTree(evidenceResponse)
+                .path("id")
+                .asText();
+
+        when(storageService.createPresignedDownloadUrl(eq(objectKey)))
+                .thenReturn("http://localhost:9000/presigned-download-url");
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/evidence/{evidenceId}/download-url",
+                                workspace.organizationId(),
+                                evidenceId
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.downloadUrl", is("http://localhost:9000/presigned-download-url")))
+                .andExpect(jsonPath("$.method", is("GET")))
+                .andExpect(jsonPath("$.expiresInMinutes", is(15)));
+    }
+
+    @Test
+    void shouldRejectDownloadUrlForUrlEvidence() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "download-url-reject@example.com",
+                "Download Url Reject User",
+                "Download Url Reject Company"
+        );
+
+        String evidenceId = createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "URL evidence cannot be downloaded",
+                "https://example.com/not-a-file"
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/evidence/{evidenceId}/download-url",
+                                workspace.organizationId(),
+                                evidenceId
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", is("Download URL is only available for file evidence")));
     }
 
     private AuthSession registerAndLogin(
