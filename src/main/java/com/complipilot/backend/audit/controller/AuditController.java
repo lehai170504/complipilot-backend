@@ -3,7 +3,10 @@ package com.complipilot.backend.audit.controller;
 import java.util.List;
 import java.util.UUID;
 
+import com.complipilot.backend.audit.dto.AuditEventFilterRequest;
 import com.complipilot.backend.audit.dto.AuditEventResponse;
+import com.complipilot.backend.audit.enums.AuditAction;
+import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
@@ -37,6 +40,8 @@ public class AuditController {
     public ResponseEntity<PageResponse<AuditEventResponse>> listAuditEvents(
             @PathVariable UUID organizationId,
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @RequestParam(required = false) AuditAction action,
+            @RequestParam(required = false) AuditResourceType resourceType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -44,6 +49,10 @@ public class AuditController {
                 auditService.listAuditEventsPage(
                         organizationId,
                         authenticatedUser.id(),
+                        new AuditEventFilterRequest(
+                                action,
+                                resourceType
+                        ),
                         page,
                         size
                 )

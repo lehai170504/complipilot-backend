@@ -132,6 +132,46 @@ class AuditControllerTest {
     }
 
     @Test
+    void shouldFilterAuditEventsByActionAndResourceType() throws Exception {
+        AuthSession session = registerAndLogin(
+                "audit-filter@example.com",
+                "Audit Filter User",
+                "Audit Filter Company"
+        );
+
+        String frameworkId = seedSecurityBaseline(session.accessToken());
+
+        applyFramework(
+                session.accessToken(),
+                session.organizationId(),
+                frameworkId
+        );
+
+        String evidenceId = createUrlEvidence(
+                session.accessToken(),
+                session.organizationId(),
+                "Audit filter evidence",
+                "https://example.com/audit-filter-evidence"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20",
+                                session.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.items[0].action", is("EVIDENCE_DOCUMENT_CREATED")))
+                .andExpect(jsonPath("$.items[0].resourceType", is("EVIDENCE_DOCUMENT")))
+                .andExpect(jsonPath("$.items[0].resourceId", is(evidenceId)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+    }
+
+    @Test
     void shouldPreventAuditAccessAcrossOrganizations() throws Exception {
         AuthSession ownerA = registerAndLogin(
                 "audit-owner-a@example.com",

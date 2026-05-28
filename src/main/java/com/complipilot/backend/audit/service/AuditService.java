@@ -1,5 +1,6 @@
 package com.complipilot.backend.audit.service;
 
+import com.complipilot.backend.audit.dto.AuditEventFilterRequest;
 import com.complipilot.backend.audit.dto.AuditEventResponse;
 import com.complipilot.backend.audit.entity.AuditEvent;
 import com.complipilot.backend.audit.enums.AuditAction;
@@ -90,6 +91,7 @@ public class AuditService {
     public PageResponse<AuditEventResponse> listAuditEventsPage(
             UUID organizationId,
             UUID currentUserId,
+            AuditEventFilterRequest filter,
             int page,
             int size
     ) {
@@ -100,8 +102,10 @@ public class AuditService {
 
         return PageResponse.from(
                 auditEventRepository
-                        .findByOrganization_Id(
+                        .findByOrganizationIdWithFilters(
                                 organizationId,
+                                filter.action(),
+                                filter.resourceType(),
                                 PageRequest.of(
                                         safePage,
                                         safeSize,
