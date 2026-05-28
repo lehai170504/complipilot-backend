@@ -127,21 +127,32 @@ public class ComplianceTaskService {
 
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);
+        String normalizedQuery = normalizeQuery(filter.query());
+        var pageable = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
         return PageResponse.from(
-                complianceTaskRepository
-                        .findByOrganizationIdWithFilters(
+                (normalizedQuery == null
+                        ? complianceTaskRepository.findByOrganizationIdWithFilters(
                                 organizationId,
                                 filter.status(),
                                 filter.priority(),
                                 filter.assigneeUserId(),
                                 filter.complianceItemId(),
-                                PageRequest.of(
-                                        safePage,
-                                        safeSize,
-                                        Sort.by(Sort.Direction.DESC, "createdAt")
-                                )
+                                pageable
                         )
+                        : complianceTaskRepository.findByOrganizationIdWithFilters(
+                                organizationId,
+                                filter.status(),
+                                filter.priority(),
+                                filter.assigneeUserId(),
+                                filter.complianceItemId(),
+                                normalizedQuery,
+                                pageable
+                        ))
                         .map(this::toResponse)
         );
     }
@@ -185,6 +196,8 @@ public class ComplianceTaskService {
                 overdue
         );
     }
+
+
 
     @Transactional
     public ComplianceTaskResponse updateTask(
@@ -293,5 +306,13 @@ public class ComplianceTaskService {
                 task.getCreatedAt(),
                 task.getUpdatedAt()
         );
+    }
+
+    private String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+
+        return query.trim();
     }
 }

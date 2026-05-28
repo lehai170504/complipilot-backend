@@ -31,4 +31,24 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID> {
             @Param("resourceType") AuditResourceType resourceType,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT event
+        FROM AuditEvent event
+        WHERE event.organization.id = :organizationId
+          AND (:action IS NULL OR event.action = :action)
+          AND (:resourceType IS NULL OR event.resourceType = :resourceType)
+          AND (
+                :query IS NULL
+                OR LOWER(event.summary) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(event.actorUser.email) LIKE LOWER(CONCAT('%', :query, '%'))
+          )
+        """)
+    Page<AuditEvent> findByOrganizationIdWithFilters(
+            @Param("organizationId") UUID organizationId,
+            @Param("action") AuditAction action,
+            @Param("resourceType") AuditResourceType resourceType,
+            @Param("query") String query,
+            Pageable pageable
+    );
 }

@@ -60,6 +60,7 @@ public class EvidenceController {
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
             @RequestParam(required = false) EvidenceType evidenceType,
             @RequestParam(required = false) EvidenceSourceType sourceType,
+            @RequestParam(required = false, name = "q") String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -69,7 +70,8 @@ public class EvidenceController {
                         authenticatedUser.id(),
                         new EvidenceFilterRequest(
                                 evidenceType,
-                                sourceType
+                                sourceType,
+                                query
                         ),
                         page,
                         size

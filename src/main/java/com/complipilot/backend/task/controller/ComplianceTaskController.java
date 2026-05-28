@@ -59,6 +59,7 @@ public class ComplianceTaskController {
             @RequestParam(required = false) ComplianceTaskPriority priority,
             @RequestParam(required = false) UUID assigneeUserId,
             @RequestParam(required = false) UUID complianceItemId,
+            @RequestParam(required = false, name = "q") String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -70,7 +71,8 @@ public class ComplianceTaskController {
                                 status,
                                 priority,
                                 assigneeUserId,
-                                complianceItemId
+                                complianceItemId,
+                                query
                         ),
                         page,
                         size

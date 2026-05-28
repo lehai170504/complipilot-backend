@@ -437,6 +437,48 @@ class ComplianceTaskControllerTest {
                 .andExpect(jsonPath("$.requestId", notNullValue()));
     }
 
+    @Test
+    void shouldSearchComplianceTasksByTitleOrDescription() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-search@example.com",
+                "Task Search User",
+                "Task Search Company"
+        );
+
+        String mfaTaskId = createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "Upload MFA evidence",
+                "Capture authentication control screenshot.",
+                "HIGH",
+                LocalDate.now().plusDays(1).toString()
+        );
+
+        createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "Review backup evidence",
+                "Check backup schedule.",
+                "LOW",
+                LocalDate.now().plusDays(2).toString()
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?q=mfa&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.items[0].id", is(mfaTaskId)))
+                .andExpect(jsonPath("$.items[0].title", is("Upload MFA evidence")))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+    }
+
     private TestWorkspace createWorkspaceWithAppliedFramework(
             String email,
             String fullName,

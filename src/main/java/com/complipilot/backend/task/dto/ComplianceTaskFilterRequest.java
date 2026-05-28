@@ -9,6 +9,7 @@ public record ComplianceTaskFilterRequest(
         ComplianceTaskStatus status,
         ComplianceTaskPriority priority,
         UUID assigneeUserId,
-        UUID complianceItemId
+        UUID complianceItemId,
+        String query
 ) {
 }

@@ -196,6 +196,42 @@ class EvidenceControllerTest {
     }
 
     @Test
+    void shouldSearchEvidenceDocumentsByTitleDescriptionOrExternalUrl() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "evidence-search@example.com",
+                "Evidence Search User",
+                "Evidence Search Company"
+        );
+
+        String mfaEvidenceId = createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "MFA configuration guide",
+                "https://example.com/security/mfa-guide"
+        );
+
+        createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "Backup procedure",
+                "https://example.com/security/backup-procedure"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/evidence?q=mfa&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.items[0].id", is(mfaEvidenceId)))
+                .andExpect(jsonPath("$.items[0].title", is("MFA configuration guide")))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+    }
+
+    @Test
     void shouldRejectInvalidEvidenceTypeFilter() throws Exception {
         TestWorkspace workspace = createWorkspaceWithAppliedFramework(
                 "evidence-invalid-filter@example.com",

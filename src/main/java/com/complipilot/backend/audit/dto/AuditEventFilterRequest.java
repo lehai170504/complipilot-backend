@@ -5,6 +5,7 @@ import com.complipilot.backend.audit.enums.AuditResourceType;
 
 public record AuditEventFilterRequest(
         AuditAction action,
-        AuditResourceType resourceType
+        AuditResourceType resourceType,
+        String query
 ) {
 }

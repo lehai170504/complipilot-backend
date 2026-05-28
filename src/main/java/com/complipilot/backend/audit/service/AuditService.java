@@ -99,19 +99,28 @@ public class AuditService {
 
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);
+        String normalizedQuery = normalizeQuery(filter.query());
+        var pageable = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
         return PageResponse.from(
-                auditEventRepository
-                        .findByOrganizationIdWithFilters(
+                (normalizedQuery == null
+                        ? auditEventRepository.findByOrganizationIdWithFilters(
                                 organizationId,
                                 filter.action(),
                                 filter.resourceType(),
-                                PageRequest.of(
-                                        safePage,
-                                        safeSize,
-                                        Sort.by(Sort.Direction.DESC, "createdAt")
-                                )
+                                pageable
                         )
+                        : auditEventRepository.findByOrganizationIdWithFilters(
+                                organizationId,
+                                filter.action(),
+                                filter.resourceType(),
+                                normalizedQuery,
+                                pageable
+                        ))
                         .map(this::toResponse)
         );
     }
@@ -138,4 +147,13 @@ public class AuditService {
                 auditEvent.getCreatedAt()
         );
     }
+
+    private String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+
+        return query.trim();
+    }
+
 }

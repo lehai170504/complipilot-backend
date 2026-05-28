@@ -6,6 +6,7 @@ import com.complipilot.backend.evidence.enums.EvidenceType;
 
 public record EvidenceFilterRequest(
         EvidenceType evidenceType,
-        EvidenceSourceType sourceType
+        EvidenceSourceType sourceType,
+        String query
 ) {
 }

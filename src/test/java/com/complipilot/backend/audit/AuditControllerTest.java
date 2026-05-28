@@ -172,6 +172,43 @@ class AuditControllerTest {
     }
 
     @Test
+    void shouldSearchAuditEventsBySummaryOrActorEmail() throws Exception {
+        AuthSession session = registerAndLogin(
+                "audit-search@example.com",
+                "Audit Search User",
+                "Audit Search Company"
+        );
+
+        String frameworkId = seedSecurityBaseline(session.accessToken());
+
+        applyFramework(
+                session.accessToken(),
+                session.organizationId(),
+                frameworkId
+        );
+
+        createUrlEvidence(
+                session.accessToken(),
+                session.organizationId(),
+                "Audit search evidence",
+                "https://example.com/audit-search-evidence"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/audit-events?q=audit-search@example.com&page=0&size=20",
+                                session.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(2)))
+                .andExpect(jsonPath("$.items[0].actorEmail", is("audit-search@example.com")))
+                .andExpect(jsonPath("$.items[1].actorEmail", is("audit-search@example.com")))
+                .andExpect(jsonPath("$.totalItems", is(2)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+    }
+
+    @Test
     void shouldRejectInvalidAuditActionFilter() throws Exception {
         AuthSession session = registerAndLogin(
                 "audit-invalid-filter@example.com",

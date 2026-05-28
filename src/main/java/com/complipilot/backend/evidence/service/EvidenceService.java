@@ -128,20 +128,30 @@ public class EvidenceService {
 
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);
+        String normalizedQuery = normalizeQuery(filter.query());
+        var pageable = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
         return PageResponse.from(
-                evidenceDocumentRepository
-                        .findByOrganizationIdWithFilters(
+                (normalizedQuery == null
+                        ? evidenceDocumentRepository.findByOrganizationIdWithFilters(
                                 organizationId,
                                 EvidenceStatus.ARCHIVED,
                                 filter.evidenceType(),
                                 filter.sourceType(),
-                                PageRequest.of(
-                                        safePage,
-                                        safeSize,
-                                        Sort.by(Sort.Direction.DESC, "createdAt")
-                                )
+                                pageable
                         )
+                        : evidenceDocumentRepository.findByOrganizationIdWithFilters(
+                                organizationId,
+                                EvidenceStatus.ARCHIVED,
+                                filter.evidenceType(),
+                                filter.sourceType(),
+                                normalizedQuery,
+                                pageable
+                        ))
                         .map(this::toEvidenceDocumentResponse)
         );
     }
@@ -433,5 +443,13 @@ public class EvidenceService {
                 link.getLinkedByUser().getId(),
                 link.getLinkedAt()
         );
+    }
+
+    private String normalizeQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+
+        return query.trim();
     }
 }

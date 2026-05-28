@@ -42,6 +42,7 @@ public class AuditController {
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) AuditResourceType resourceType,
+            @RequestParam(required = false, name = "q") String query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -51,7 +52,8 @@ public class AuditController {
                         authenticatedUser.id(),
                         new AuditEventFilterRequest(
                                 action,
-                                resourceType
+                                resourceType,
+                                query
                         ),
                         page,
                         size
