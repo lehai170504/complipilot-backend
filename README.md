@@ -62,6 +62,9 @@ Paginated evidence documents
 Task list filters
 Evidence list filters
 Audit event filters
+Keyword search for tasks
+Keyword search for evidence
+Keyword search for audit events
 Request ID / correlation logging
 CORS hardening
 Auth endpoint rate limiting
@@ -583,7 +586,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-## Pagination
+## Pagination, Filters, and Keyword Search
 
 Some list endpoints return a paginated response:
 
@@ -615,7 +618,7 @@ max size = 100
 items are sorted by createdAt DESC
 ```
 
-Supported filters:
+Supported filters and keyword search:
 
 ```txt
 GET /tasks:
@@ -623,14 +626,34 @@ GET /tasks:
   priority
   assigneeUserId
   complianceItemId
+  q
 
 GET /evidence:
   evidenceType
   sourceType
+  q
 
 GET /audit-events:
   action
   resourceType
+  q
+```
+
+Keyword search fields:
+
+```txt
+GET /tasks?q=...
+  title
+  description
+
+GET /evidence?q=...
+  title
+  description
+  externalUrl
+
+GET /audit-events?q=...
+  summary
+  actorEmail
 ```
 
 Examples:
@@ -638,8 +661,12 @@ Examples:
 ```http
 GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&priority=HIGH&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?complianceItemId={itemId}&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?q=mfa&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&q=mfa&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?evidenceType=POLICY&sourceType=FILE&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?q=policy&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?q=audit-search@example.com&page=0&size=20
 ```
 
 These endpoints still return arrays:
@@ -1165,11 +1192,20 @@ DELETE /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence
 }
 ```
 
-Optional filters:
+Optional filters and search:
 
 ```txt
 evidenceType
 sourceType
+q
+```
+
+Search fields:
+
+```txt
+title
+description
+externalUrl
 ```
 
 Examples:
@@ -1178,6 +1214,8 @@ Examples:
 GET /api/v1/organizations/{organizationId}/evidence?evidenceType=POLICY&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?sourceType=URL&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?evidenceType=PROCEDURE&sourceType=URL&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?q=mfa&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?evidenceType=PROCEDURE&q=mfa&page=0&size=20
 ```
 
 Evidence source types:
@@ -1234,13 +1272,21 @@ DELETE /api/v1/organizations/{organizationId}/tasks/{taskId}
 }
 ```
 
-Optional filters:
+Optional filters and search:
 
 ```txt
 status
 priority
 assigneeUserId
 complianceItemId
+q
+```
+
+Search fields:
+
+```txt
+title
+description
 ```
 
 Examples:
@@ -1251,6 +1297,8 @@ GET /api/v1/organizations/{organizationId}/tasks?priority=CRITICAL&page=0&size=2
 GET /api/v1/organizations/{organizationId}/tasks?status=IN_PROGRESS&priority=HIGH&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?complianceItemId={itemId}&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?assigneeUserId={userId}&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?q=mfa&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&q=mfa&page=0&size=20
 ```
 
 Task statuses:
@@ -1291,11 +1339,19 @@ Returns `PageResponse<AuditEvent>`:
 }
 ```
 
-Optional filters:
+Optional filters and search:
 
 ```txt
 action
 resourceType
+q
+```
+
+Search fields:
+
+```txt
+summary
+actorEmail
 ```
 
 Examples:
@@ -1304,6 +1360,8 @@ Examples:
 GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?resourceType=EVIDENCE_DOCUMENT&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?q=audit-search@example.com&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&q=evidence&page=0&size=20
 ```
 
 Tracked events include:
@@ -1669,7 +1727,7 @@ Before real deployment:
 The latest frontend API contract file generated during development:
 
 ```txt
-complipilot-fe-api-contract-v0.7.md
+complipilot-fe-api-contract-v0.8.md
 ```
 
 Frontend local Maven backend:
@@ -1698,7 +1756,7 @@ These return:
 PageResponse<T>
 ```
 
-New in v0.7:
+New in v0.8:
 
 ```txt
 /tasks supports:
@@ -1706,14 +1764,34 @@ New in v0.7:
   priority
   assigneeUserId
   complianceItemId
+  q
 
 /evidence supports:
   evidenceType
   sourceType
+  q
 
 /audit-events supports:
   action
   resourceType
+  q
+```
+
+Keyword search fields:
+
+```txt
+/tasks q:
+  title
+  description
+
+/evidence q:
+  title
+  description
+  externalUrl
+
+/audit-events q:
+  summary
+  actorEmail
 ```
 
 ---
@@ -1742,6 +1820,9 @@ Paginated evidence documents
 Task list filters
 Evidence list filters
 Audit event filters
+Keyword search for tasks
+Keyword search for evidence
+Keyword search for audit events
 Request ID / observability
 CORS hardening
 Auth endpoint rate limiting
@@ -1761,6 +1842,6 @@ Advanced role management
 Email invitations
 Evidence OCR/AI extraction
 Compliance report export
-Keyword search for tasks/evidence/audit
-Deployment setup
+Advanced API sorting options
+
 ```
