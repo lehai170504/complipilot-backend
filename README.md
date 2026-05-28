@@ -46,6 +46,7 @@ Backend foundation
 Authentication
 JWT access token security
 Refresh token rotation
+Refresh token cleanup
 Organizations / tenancy
 Compliance frameworks
 Compliance items
@@ -54,7 +55,10 @@ Evidence metadata
 MinIO presigned upload/download URLs
 Evidence-to-control linking
 Audit trail
+Paginated audit events
 Compliance tasks
+Paginated compliance tasks
+Paginated evidence documents
 Request ID / correlation logging
 CORS hardening
 Auth endpoint rate limiting
@@ -384,6 +388,7 @@ Common fixes:
 3. Register JavaTimeModule for ObjectMapper.
 4. Check repository method names for nested JPA fields.
 5. Disable rate limit for broad integration tests.
+6. Update JSONPath expectations after response shape changes.
 ```
 
 ---
@@ -571,6 +576,51 @@ All other APIs require:
 
 ```http
 Authorization: Bearer <accessToken>
+```
+
+---
+
+## Pagination
+
+Some list endpoints return a paginated response:
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalItems": 0,
+  "totalPages": 0
+}
+```
+
+Paginated endpoints:
+
+```http
+GET /api/v1/organizations/{organizationId}/audit-events?page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?page=0&size=20
+```
+
+Rules:
+
+```txt
+page starts from 0
+default page = 0
+default size = 20
+max size = 100
+items are sorted by createdAt DESC
+```
+
+These endpoints still return arrays:
+
+```http
+GET /api/v1/organizations/{organizationId}/compliance-items
+GET /api/v1/organizations/{organizationId}/compliance-items/due-soon
+GET /api/v1/organizations/{organizationId}/compliance-items/overdue
+GET /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence-links
+GET /api/v1/compliance/frameworks
+GET /api/v1/compliance/frameworks/{frameworkId}/requirements
 ```
 
 ---
@@ -1064,13 +1114,25 @@ status is not COMPLIANT or WAIVED
 ```http
 POST   /api/v1/organizations/{organizationId}/evidence/upload-url
 POST   /api/v1/organizations/{organizationId}/evidence
-GET    /api/v1/organizations/{organizationId}/evidence
+GET    /api/v1/organizations/{organizationId}/evidence?page=0&size=20
 PATCH  /api/v1/organizations/{organizationId}/evidence/{evidenceId}
 DELETE /api/v1/organizations/{organizationId}/evidence/{evidenceId}
 POST   /api/v1/organizations/{organizationId}/evidence/{evidenceId}/download-url
 POST   /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence-links
 GET    /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence-links
 DELETE /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence-links/{evidenceDocumentId}
+```
+
+`GET /evidence` returns `PageResponse<EvidenceDocument>`:
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalItems": 0,
+  "totalPages": 0
+}
 ```
 
 Evidence source types:
@@ -1109,10 +1171,22 @@ File upload flow:
 
 ```http
 POST   /api/v1/organizations/{organizationId}/tasks
-GET    /api/v1/organizations/{organizationId}/tasks
+GET    /api/v1/organizations/{organizationId}/tasks?page=0&size=20
 GET    /api/v1/organizations/{organizationId}/tasks/summary
 PATCH  /api/v1/organizations/{organizationId}/tasks/{taskId}
 DELETE /api/v1/organizations/{organizationId}/tasks/{taskId}
+```
+
+`GET /tasks` returns `PageResponse<ComplianceTask>`:
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalItems": 0,
+  "totalPages": 0
+}
 ```
 
 Task statuses:
@@ -1138,10 +1212,20 @@ CRITICAL
 ## Audit APIs
 
 ```http
-GET /api/v1/organizations/{organizationId}/audit-events
+GET /api/v1/organizations/{organizationId}/audit-events?page=0&size=20
 ```
 
-Returns recent activity events for an organization.
+Returns `PageResponse<AuditEvent>`:
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalItems": 0,
+  "totalPages": 0
+}
+```
 
 Tracked events include:
 
@@ -1366,6 +1450,7 @@ Common fixes:
 3. Register JavaTimeModule for ObjectMapper.
 4. Check repository method names for nested JPA fields.
 5. Disable rate limit for broad integration tests.
+6. Update JSONPath after pagination changes.
 ```
 
 ---
@@ -1505,7 +1590,7 @@ Before real deployment:
 The latest frontend API contract file generated during development:
 
 ```txt
-complipilot-fe-api-contract-v0.5.md
+complipilot-fe-api-contract-v0.6.md
 ```
 
 Frontend local Maven backend:
@@ -1518,6 +1603,20 @@ Frontend production-like Docker backend:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8082
+```
+
+Important FE response shape updates:
+
+```txt
+GET /api/v1/organizations/{organizationId}/audit-events?page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?page=0&size=20
+```
+
+These return:
+
+```txt
+PageResponse<T>
 ```
 
 ---
@@ -1539,7 +1638,10 @@ Due soon / overdue compliance views
 Evidence metadata
 MinIO presigned upload/download URLs
 Audit trail
+Paginated audit events
 Compliance tasks
+Paginated compliance tasks
+Paginated evidence documents
 Request ID / observability
 CORS hardening
 Auth endpoint rate limiting
@@ -1554,10 +1656,10 @@ Next recommended work:
 
 ```txt
 Frontend implementation
-API pagination/sorting for audit/tasks/evidence
 Deployment setup
 Advanced role management
 Email invitations
 Evidence OCR/AI extraction
 Compliance report export
+API filters/search for tasks/evidence/audit
 ```
