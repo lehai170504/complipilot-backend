@@ -14,6 +14,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -77,6 +78,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 "Unauthorized",
                 message,
                 request.getRequestURI(),
+                MDC.get("requestId"),
                 List.of()
         );
 

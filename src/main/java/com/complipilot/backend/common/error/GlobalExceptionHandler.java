@@ -1,6 +1,5 @@
 package com.complipilot.backend.common.error;
 
-import java.time.Instant;
 import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,11 +7,10 @@ import jakarta.validation.ConstraintViolationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import com.complipilot.backend.common.error.ApiErrorResponse.FieldViolation;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -22,19 +20,19 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException exception,
             HttpServletRequest request
     ) {
-        List<FieldViolation> violations = exception.getBindingResult()
+        List<ApiErrorResponse.FieldViolation> fieldViolations = exception
+                .getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(error -> new FieldViolation(error.getField(), error.getDefaultMessage()))
+                .map(this::toFieldViolation)
                 .toList();
 
-        ApiErrorResponse response = new ApiErrorResponse(
-                Instant.now(),
+        ApiErrorResponse response = ApiErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 "Validation failed",
                 request.getRequestURI(),
-                violations
+                fieldViolations
         );
 
         return ResponseEntity.badRequest().body(response);
@@ -45,39 +43,39 @@ public class GlobalExceptionHandler {
             ConstraintViolationException exception,
             HttpServletRequest request
     ) {
-        List<FieldViolation> violations = exception.getConstraintViolations()
+        List<ApiErrorResponse.FieldViolation> fieldViolations = exception
+                .getConstraintViolations()
                 .stream()
-                .map(violation -> new FieldViolation(
+                .map(violation -> new ApiErrorResponse.FieldViolation(
                         violation.getPropertyPath().toString(),
                         violation.getMessage()
                 ))
                 .toList();
 
-        ApiErrorResponse response = new ApiErrorResponse(
-                Instant.now(),
+        ApiErrorResponse response = ApiErrorResponse.of(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                "Constraint validation failed",
+                "Validation failed",
                 request.getRequestURI(),
-                violations
+                fieldViolations
         );
 
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiErrorResponse> handleConflict(
-            ConflictException exception,
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleBadRequest(
+            BadRequestException exception,
             HttpServletRequest request
     ) {
         ApiErrorResponse response = ApiErrorResponse.of(
-                HttpStatus.CONFLICT.value(),
-                HttpStatus.CONFLICT.getReasonPhrase(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 exception.getMessage(),
                 request.getRequestURI()
         );
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        return ResponseEntity.badRequest().body(response);
     }
 
     @ExceptionHandler(UnauthorizedException.class)
@@ -125,19 +123,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ApiErrorResponse> handleBadRequest(
-            BadRequestException exception,
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflict(
+            ConflictException exception,
             HttpServletRequest request
     ) {
         ApiErrorResponse response = ApiErrorResponse.of(
-                HttpStatus.BAD_REQUEST.value(),
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
                 exception.getMessage(),
                 request.getRequestURI()
         );
 
-        return ResponseEntity.badRequest().body(response);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(Exception.class)
@@ -153,5 +151,12 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private ApiErrorResponse.FieldViolation toFieldViolation(FieldError fieldError) {
+        return new ApiErrorResponse.FieldViolation(
+                fieldError.getField(),
+                fieldError.getDefaultMessage()
+        );
     }
 }

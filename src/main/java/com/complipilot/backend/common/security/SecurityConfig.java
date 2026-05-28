@@ -1,10 +1,15 @@
 package com.complipilot.backend.common.security;
 
+import com.complipilot.backend.common.error.ApiErrorResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -15,6 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 public class SecurityConfig {
+
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
 
     @Bean
     SecurityFilterChain securityFilterChain(
@@ -40,8 +48,18 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            ApiErrorResponse errorResponse = ApiErrorResponse.of(
+                                    HttpServletResponse.SC_UNAUTHORIZED,
+                                    "Unauthorized",
+                                    "Authentication is required",
+                                    request.getRequestURI()
+                            );
+
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            objectMapper.writeValue(response.getWriter(), errorResponse);
+                        }
                         )
                 )
                 .httpBasic(AbstractHttpConfigurer::disable)

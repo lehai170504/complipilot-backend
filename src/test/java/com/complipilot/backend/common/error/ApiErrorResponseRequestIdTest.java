@@ -1,8 +1,9 @@
-package com.complipilot.backend.health;
+package com.complipilot.backend.common.error;
 
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.complipilot.backend.common.storage.StorageService;
@@ -19,7 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class HealthControllerCorrelationTest {
+class ApiErrorResponseRequestIdTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -28,19 +29,15 @@ class HealthControllerCorrelationTest {
     private StorageService storageService;
 
     @Test
-    void shouldGenerateRequestIdHeaderWhenMissing() throws Exception {
-        mockMvc.perform(get("/api/v1/health"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("X-Request-Id", notNullValue()));
-    }
-
-    @Test
-    void shouldEchoIncomingRequestIdHeader() throws Exception {
+    void shouldIncludeRequestIdInUnauthorizedErrorResponse() throws Exception {
         mockMvc.perform(
-                        get("/api/v1/health")
-                                .header("X-Request-Id", "frontend-test-request-id-123")
+                        get("/api/v1/me")
+                                .header("X-Request-Id", "frontend-error-request-id-123")
                 )
-                .andExpect(status().isOk())
-                .andExpect(header().string("X-Request-Id", "frontend-test-request-id-123"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("X-Request-Id", "frontend-error-request-id-123"))
+                .andExpect(jsonPath("$.requestId", is("frontend-error-request-id-123")))
+                .andExpect(jsonPath("$.status", is(401)))
+                .andExpect(jsonPath("$.error", is("Unauthorized")));
     }
 }
