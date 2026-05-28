@@ -1,8 +1,7 @@
 package com.complipilot.backend.compliance.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.util.*;
 
 import com.complipilot.backend.audit.enums.AuditAction;
 import com.complipilot.backend.audit.enums.AuditResourceType;
@@ -44,6 +43,13 @@ public class ComplianceService {
     private final UserRepository userRepository;
     private final TenantAccessService tenantAccessService;
     private final AuditService auditService;
+
+    private static final int DUE_SOON_DAYS = 14;
+
+    private static final Set<CompanyComplianceStatus> DONE_STATUSES = EnumSet.of(
+            CompanyComplianceStatus.COMPLIANT,
+            CompanyComplianceStatus.WAIVED
+    );
 
     public ComplianceService(
             ComplianceFrameworkRepository frameworkRepository,
@@ -421,6 +427,48 @@ public class ComplianceService {
         );
 
         return toCompanyComplianceItemResponse(item);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompanyComplianceItemResponse> listDueSoonComplianceItems(
+            UUID organizationId,
+            UUID currentUserId
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+
+        LocalDate today = LocalDate.now();
+        LocalDate dueSoonUntil = today.plusDays(DUE_SOON_DAYS);
+
+        return companyComplianceItemRepository
+                .findByOrganization_IdAndDueDateBetweenAndStatusNotInOrderByDueDateAsc(
+                        organizationId,
+                        today,
+                        dueSoonUntil,
+                        DONE_STATUSES
+                )
+                .stream()
+                .map(this::toCompanyComplianceItemResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompanyComplianceItemResponse> listOverdueComplianceItems(
+            UUID organizationId,
+            UUID currentUserId
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+
+        LocalDate today = LocalDate.now();
+
+        return companyComplianceItemRepository
+                .findByOrganization_IdAndDueDateBeforeAndStatusNotInOrderByDueDateAsc(
+                        organizationId,
+                        today,
+                        DONE_STATUSES
+                )
+                .stream()
+                .map(this::toCompanyComplianceItemResponse)
+                .toList();
     }
 
     private FrameworkResponse toFrameworkResponse(ComplianceFramework framework) {

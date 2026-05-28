@@ -196,4 +196,40 @@ public class ComplianceController {
                 )
         );
     }
+
+    @Operation(
+            summary = "List due soon compliance items",
+            description = "Returns compliance items due from today through the next 14 days, excluding COMPLIANT and WAIVED items.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/organizations/{organizationId}/compliance-items/due-soon")
+    public ResponseEntity<List<CompanyComplianceItemResponse>> listDueSoonComplianceItems(
+            @PathVariable UUID organizationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                complianceService.listDueSoonComplianceItems(
+                        organizationId,
+                        authenticatedUser.id()
+                )
+        );
+    }
+
+    @Operation(
+            summary = "List overdue compliance items",
+            description = "Returns compliance items with due dates before today, excluding COMPLIANT and WAIVED items.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/organizations/{organizationId}/compliance-items/overdue")
+    public ResponseEntity<List<CompanyComplianceItemResponse>> listOverdueComplianceItems(
+            @PathVariable UUID organizationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                complianceService.listOverdueComplianceItems(
+                        organizationId,
+                        authenticatedUser.id()
+                )
+        );
+    }
 }

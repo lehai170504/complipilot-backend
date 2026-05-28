@@ -1,5 +1,7 @@
 package com.complipilot.backend.compliance.repository;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,5 +29,18 @@ public interface CompanyComplianceItemRepository extends JpaRepository<CompanyCo
     long countByOrganization_IdAndStatus(
             UUID organizationId,
             CompanyComplianceStatus status
+    );
+
+    List<CompanyComplianceItem> findByOrganization_IdAndDueDateBetweenAndStatusNotInOrderByDueDateAsc(
+            UUID organizationId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Collection<CompanyComplianceStatus> excludedStatuses
+    );
+
+    List<CompanyComplianceItem> findByOrganization_IdAndDueDateBeforeAndStatusNotInOrderByDueDateAsc(
+            UUID organizationId,
+            LocalDate date,
+            Collection<CompanyComplianceStatus> excludedStatuses
     );
 }

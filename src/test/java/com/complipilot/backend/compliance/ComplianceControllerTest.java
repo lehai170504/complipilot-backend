@@ -21,6 +21,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -574,6 +576,268 @@ class ComplianceControllerTest {
                 )
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message", is("You do not have access to this organization")));
+    }
+
+    @Test
+    void shouldReturnDueSoonComplianceItems() throws Exception {
+        AuthSession session = registerAndLogin(
+                "due-soon@example.com",
+                "Due Soon User",
+                "Due Soon Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated());
+
+        String itemsResponse = mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String firstItemId = objectMapper.readTree(itemsResponse)
+                .get(0)
+                .path("id")
+                .asText();
+
+        String dueDate = LocalDate.now().plusDays(7).toString();
+
+        String updateBody = """
+            {
+              "status": "IN_PROGRESS",
+              "ownerUserId": null,
+              "dueDate": "%s",
+              "notes": "Due soon item."
+            }
+            """.formatted(dueDate);
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                firstItemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(updateBody)
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items/due-soon", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", is(1)))
+                .andExpect(jsonPath("$[0].id", is(firstItemId)))
+                .andExpect(jsonPath("$[0].dueDate", is(dueDate)))
+                .andExpect(jsonPath("$[0].status", is("IN_PROGRESS")));
+    }
+
+    @Test
+    void shouldReturnOverdueComplianceItems() throws Exception {
+        AuthSession session = registerAndLogin(
+                "overdue@example.com",
+                "Overdue User",
+                "Overdue Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated());
+
+        String itemsResponse = mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String firstItemId = objectMapper.readTree(itemsResponse)
+                .get(0)
+                .path("id")
+                .asText();
+
+        String overdueDate = LocalDate.now().minusDays(1).toString();
+
+        String updateBody = """
+            {
+              "status": "IN_PROGRESS",
+              "ownerUserId": null,
+              "dueDate": "%s",
+              "notes": "Overdue item."
+            }
+            """.formatted(overdueDate);
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                firstItemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(updateBody)
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items/overdue", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", is(1)))
+                .andExpect(jsonPath("$[0].id", is(firstItemId)))
+                .andExpect(jsonPath("$[0].dueDate", is(overdueDate)))
+                .andExpect(jsonPath("$[0].status", is("IN_PROGRESS")));
+    }
+
+    @Test
+    void shouldExcludeCompliantItemsFromOverdue() throws Exception {
+        AuthSession session = registerAndLogin(
+                "overdue-compliant@example.com",
+                "Overdue Compliant User",
+                "Overdue Compliant Company"
+        );
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated());
+
+        String itemsResponse = mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String firstItemId = objectMapper.readTree(itemsResponse)
+                .get(0)
+                .path("id")
+                .asText();
+
+        String overdueDate = LocalDate.now().minusDays(1).toString();
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                firstItemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                    {
+                                      "status": "IN_PROGRESS",
+                                      "ownerUserId": null,
+                                      "dueDate": "%s",
+                                      "notes": "Start item."
+                                    }
+                                    """.formatted(overdueDate))
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                firstItemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                    {
+                                      "status": "READY_FOR_REVIEW",
+                                      "ownerUserId": null,
+                                      "dueDate": "%s",
+                                      "notes": "Ready."
+                                    }
+                                    """.formatted(overdueDate))
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        patch("/api/v1/organizations/{organizationId}/compliance-items/{itemId}",
+                                session.organizationId(),
+                                firstItemId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                    {
+                                      "status": "COMPLIANT",
+                                      "ownerUserId": null,
+                                      "dueDate": "%s",
+                                      "notes": "Compliant but old due date."
+                                    }
+                                    """.formatted(overdueDate))
+                )
+                .andExpect(status().isOk());
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items/overdue", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", is(0)));
     }
 
     private AuthSession registerAndLogin(
