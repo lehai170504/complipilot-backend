@@ -3,6 +3,7 @@ package com.complipilot.backend.evidence.controller;
 import java.util.List;
 import java.util.UUID;
 
+import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
 import com.complipilot.backend.evidence.dto.ComplianceItemEvidenceResponse;
 import com.complipilot.backend.evidence.dto.CreateEvidenceDocumentRequest;
@@ -23,13 +24,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Evidence", description = "Evidence document metadata and compliance item evidence links")
 @RestController
@@ -65,14 +60,18 @@ public class EvidenceController {
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @GetMapping("/api/v1/organizations/{organizationId}/evidence")
-    public ResponseEntity<List<EvidenceDocumentResponse>> listEvidenceDocuments(
+    public ResponseEntity<PageResponse<EvidenceDocumentResponse>> listEvidenceDocuments(
             @PathVariable UUID organizationId,
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(
                 evidenceService.listEvidenceDocuments(
                         organizationId,
-                        authenticatedUser.id()
+                        authenticatedUser.id(),
+                        page,
+                        size
                 )
         );
     }

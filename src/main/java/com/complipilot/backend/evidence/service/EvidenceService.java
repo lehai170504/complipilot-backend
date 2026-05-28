@@ -8,6 +8,7 @@ import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
+import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
 import com.complipilot.backend.evidence.dto.ComplianceItemEvidenceResponse;
@@ -32,6 +33,8 @@ import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlRequest;
 import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlResponse;
 import com.complipilot.backend.evidence.dto.EvidenceDownloadUrlResponse;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,20 +124,30 @@ public class EvidenceService {
     }
 
     @Transactional(readOnly = true)
-    public List<EvidenceDocumentResponse> listEvidenceDocuments(
+    public PageResponse<EvidenceDocumentResponse> listEvidenceDocuments(
             UUID organizationId,
-            UUID currentUserId
+            UUID currentUserId,
+            int page,
+            int size
     ) {
         tenantAccessService.requireActiveMember(organizationId, currentUserId);
 
-        return evidenceDocumentRepository
-                .findByOrganization_IdAndStatusOrderByCreatedAtDesc(
-                        organizationId,
-                        EvidenceStatus.ACTIVE
-                )
-                .stream()
-                .map(this::toEvidenceDocumentResponse)
-                .toList();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+
+        return PageResponse.from(
+                evidenceDocumentRepository
+                        .findByOrganization_IdAndStatusNot(
+                                organizationId,
+                                EvidenceStatus.ARCHIVED,
+                                PageRequest.of(
+                                        safePage,
+                                        safeSize,
+                                        Sort.by(Sort.Direction.DESC, "createdAt")
+                                )
+                        )
+                        .map(this::toEvidenceDocumentResponse)
+        );
     }
 
     @Transactional

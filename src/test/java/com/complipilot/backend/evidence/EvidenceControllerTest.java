@@ -2,20 +2,16 @@ package com.complipilot.backend.evidence;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
 
 import com.complipilot.backend.common.storage.StorageService;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -24,13 +20,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(EvidenceControllerTest.TestcontainersConfig.class)
 class EvidenceControllerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -62,11 +67,15 @@ class EvidenceControllerTest {
                                 .header("Authorization", "Bearer " + workspace.accessToken())
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id", is(evidenceId)))
-                .andExpect(jsonPath("$[0].title", is("MFA configuration guide")))
-                .andExpect(jsonPath("$[0].evidenceType", is("PROCEDURE")))
-                .andExpect(jsonPath("$[0].sourceType", is("URL")))
-                .andExpect(jsonPath("$[0].status", is("ACTIVE")));
+                .andExpect(jsonPath("$.items[0].id", is(evidenceId)))
+                .andExpect(jsonPath("$.items[0].title", is("MFA configuration guide")))
+                .andExpect(jsonPath("$.items[0].evidenceType", is("PROCEDURE")))
+                .andExpect(jsonPath("$.items[0].sourceType", is("URL")))
+                .andExpect(jsonPath("$.items[0].status", is("ACTIVE")))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
 
         String updateBody = """
                 {
@@ -106,7 +115,47 @@ class EvidenceControllerTest {
                                 .header("Authorization", "Bearer " + workspace.accessToken())
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()", is(0)));
+                .andExpect(jsonPath("$.items.length()", is(0)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalItems", is(0)))
+                .andExpect(jsonPath("$.totalPages", is(0)));
+    }
+
+    @Test
+    void shouldReturnPaginatedEvidenceDocuments() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "evidence-page@example.com",
+                "Evidence Page User",
+                "Evidence Page Company"
+        );
+
+        createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "Evidence A",
+                "https://example.com/evidence-a"
+        );
+
+        createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "Evidence B",
+                "https://example.com/evidence-b"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/evidence?page=0&size=1",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(1)))
+                .andExpect(jsonPath("$.totalItems", is(2)))
+                .andExpect(jsonPath("$.totalPages", is(2)));
     }
 
     @Test
@@ -290,57 +339,6 @@ class EvidenceControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    private TestWorkspace createWorkspaceWithAppliedFramework(
-            String email,
-            String fullName,
-            String organizationName
-    ) throws Exception {
-        AuthSession session = registerAndLogin(email, fullName, organizationName);
-
-        String seedResponse = mockMvc.perform(
-                        post("/api/v1/compliance/frameworks/seed/security-baseline")
-                                .header("Authorization", "Bearer " + session.accessToken())
-                )
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        String frameworkId = objectMapper.readTree(seedResponse)
-                .path("id")
-                .asText();
-
-        mockMvc.perform(
-                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
-                                session.organizationId(),
-                                frameworkId
-                        )
-                                .header("Authorization", "Bearer " + session.accessToken())
-                )
-                .andExpect(status().isCreated());
-
-        String itemsResponse = mockMvc.perform(
-                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
-                                .header("Authorization", "Bearer " + session.accessToken())
-                )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()", is(5)))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        String firstComplianceItemId = objectMapper.readTree(itemsResponse)
-                .get(0)
-                .path("id")
-                .asText();
-
-        return new TestWorkspace(
-                session.accessToken(),
-                session.organizationId(),
-                firstComplianceItemId
-        );
-    }
-
     @Test
     void shouldCreatePresignedUploadUrl() throws Exception {
         TestWorkspace workspace = createWorkspaceWithAppliedFramework(
@@ -362,11 +360,11 @@ class EvidenceControllerTest {
         )).thenReturn("http://localhost:9000/presigned-upload-url");
 
         String body = """
-            {
-              "filename": "mfa-policy.pdf",
-              "contentType": "application/pdf"
-            }
-            """;
+                {
+                  "filename": "mfa-policy.pdf",
+                  "contentType": "application/pdf"
+                }
+                """;
 
         mockMvc.perform(
                         post("/api/v1/organizations/{organizationId}/evidence/upload-url", workspace.organizationId())
@@ -393,17 +391,17 @@ class EvidenceControllerTest {
                 .formatted(workspace.organizationId());
 
         String evidenceBody = """
-            {
-              "title": "Downloadable PDF evidence",
-              "description": "File evidence for download URL test.",
-              "evidenceType": "POLICY",
-              "sourceType": "FILE",
-              "fileObjectKey": "%s",
-              "externalUrl": null,
-              "contentType": "application/pdf",
-              "fileSizeBytes": 12345
-            }
-            """.formatted(objectKey);
+                {
+                  "title": "Downloadable PDF evidence",
+                  "description": "File evidence for download URL test.",
+                  "evidenceType": "POLICY",
+                  "sourceType": "FILE",
+                  "fileObjectKey": "%s",
+                  "externalUrl": null,
+                  "contentType": "application/pdf",
+                  "fileSizeBytes": 12345
+                }
+                """.formatted(objectKey);
 
         String evidenceResponse = mockMvc.perform(
                         post("/api/v1/organizations/{organizationId}/evidence", workspace.organizationId())
@@ -465,6 +463,57 @@ class EvidenceControllerTest {
                 .andExpect(jsonPath("$.message", is("Download URL is only available for file evidence")));
     }
 
+    private TestWorkspace createWorkspaceWithAppliedFramework(
+            String email,
+            String fullName,
+            String organizationName
+    ) throws Exception {
+        AuthSession session = registerAndLogin(email, fullName, organizationName);
+
+        String seedResponse = mockMvc.perform(
+                        post("/api/v1/compliance/frameworks/seed/security-baseline")
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String frameworkId = objectMapper.readTree(seedResponse)
+                .path("id")
+                .asText();
+
+        mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/compliance-frameworks/{frameworkId}/apply",
+                                session.organizationId(),
+                                frameworkId
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isCreated());
+
+        String itemsResponse = mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/compliance-items", session.organizationId())
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()", is(5)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String firstComplianceItemId = objectMapper.readTree(itemsResponse)
+                .get(0)
+                .path("id")
+                .asText();
+
+        return new TestWorkspace(
+                session.accessToken(),
+                session.organizationId(),
+                firstComplianceItemId
+        );
+    }
+
     private AuthSession registerAndLogin(
             String email,
             String fullName,
@@ -508,6 +557,7 @@ class EvidenceControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andExpect(jsonPath("$.refreshToken", notNullValue()))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -568,4 +618,15 @@ class EvidenceControllerTest {
     ) {
     }
 
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TestcontainersConfig {
+
+        @Bean
+        @ServiceConnection
+        PostgreSQLContainer<?> postgresContainer() {
+            return new PostgreSQLContainer<>(
+                    DockerImageName.parse("postgres:16-alpine")
+            );
+        }
+    }
 }
