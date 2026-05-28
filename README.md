@@ -65,6 +65,9 @@ Audit event filters
 Keyword search for tasks
 Keyword search for evidence
 Keyword search for audit events
+Task list sorting
+Evidence list sorting
+Audit event sorting
 Request ID / correlation logging
 CORS hardening
 Auth endpoint rate limiting
@@ -586,7 +589,7 @@ Authorization: Bearer <accessToken>
 
 ---
 
-## Pagination, Filters, and Keyword Search
+## Pagination, Filters, Keyword Search, and Sorting
 
 Some list endpoints return a paginated response:
 
@@ -615,10 +618,11 @@ page starts from 0
 default page = 0
 default size = 20
 max size = 100
-items are sorted by createdAt DESC
+default sortBy = createdAt
+default sortDirection = DESC
 ```
 
-Supported filters and keyword search:
+Supported filters, keyword search, and sorting:
 
 ```txt
 GET /tasks:
@@ -627,16 +631,22 @@ GET /tasks:
   assigneeUserId
   complianceItemId
   q
+  sortBy
+  sortDirection
 
 GET /evidence:
   evidenceType
   sourceType
   q
+  sortBy
+  sortDirection
 
 GET /audit-events:
   action
   resourceType
   q
+  sortBy
+  sortDirection
 ```
 
 Keyword search fields:
@@ -656,6 +666,31 @@ GET /audit-events?q=...
   actorEmail
 ```
 
+Allowed sort fields:
+
+```txt
+GET /tasks:
+  createdAt
+  updatedAt
+  dueDate
+  priority
+  status
+  title
+
+GET /evidence:
+  createdAt
+  updatedAt
+  title
+  evidenceType
+  sourceType
+
+GET /audit-events:
+  createdAt
+  action
+  resourceType
+  actorEmail
+```
+
 Examples:
 
 ```http
@@ -663,10 +698,15 @@ GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&priority=HIGH&page=
 GET /api/v1/organizations/{organizationId}/tasks?complianceItemId={itemId}&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?q=mfa&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&q=mfa&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?sortBy=dueDate&sortDirection=ASC&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?q=mfa&sortBy=title&sortDirection=ASC&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?sortBy=dueDate&sortDirection=ASC&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?evidenceType=POLICY&sourceType=FILE&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?q=policy&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?sortBy=title&sortDirection=ASC&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?q=audit-search@example.com&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?sortBy=action&sortDirection=ASC&page=0&size=20
 ```
 
 These endpoints still return arrays:
@@ -1192,12 +1232,14 @@ DELETE /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence
 }
 ```
 
-Optional filters and search:
+Optional filters, search, and sorting:
 
 ```txt
 evidenceType
 sourceType
 q
+sortBy
+sortDirection
 ```
 
 Search fields:
@@ -1208,6 +1250,16 @@ description
 externalUrl
 ```
 
+Allowed sort fields:
+
+```txt
+createdAt
+updatedAt
+title
+evidenceType
+sourceType
+```
+
 Examples:
 
 ```http
@@ -1216,6 +1268,8 @@ GET /api/v1/organizations/{organizationId}/evidence?sourceType=URL&page=0&size=2
 GET /api/v1/organizations/{organizationId}/evidence?evidenceType=PROCEDURE&sourceType=URL&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?q=mfa&page=0&size=20
 GET /api/v1/organizations/{organizationId}/evidence?evidenceType=PROCEDURE&q=mfa&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?sortBy=title&sortDirection=ASC&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?q=mfa&sortBy=title&sortDirection=ASC&page=0&size=20
 ```
 
 Evidence source types:
@@ -1272,7 +1326,7 @@ DELETE /api/v1/organizations/{organizationId}/tasks/{taskId}
 }
 ```
 
-Optional filters and search:
+Optional filters, search, and sorting:
 
 ```txt
 status
@@ -1280,6 +1334,8 @@ priority
 assigneeUserId
 complianceItemId
 q
+sortBy
+sortDirection
 ```
 
 Search fields:
@@ -1287,6 +1343,17 @@ Search fields:
 ```txt
 title
 description
+```
+
+Allowed sort fields:
+
+```txt
+createdAt
+updatedAt
+dueDate
+priority
+status
+title
 ```
 
 Examples:
@@ -1299,6 +1366,8 @@ GET /api/v1/organizations/{organizationId}/tasks?complianceItemId={itemId}&page=
 GET /api/v1/organizations/{organizationId}/tasks?assigneeUserId={userId}&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?q=mfa&page=0&size=20
 GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&q=mfa&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?sortBy=dueDate&sortDirection=ASC&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?q=mfa&sortBy=title&sortDirection=ASC&page=0&size=20
 ```
 
 Task statuses:
@@ -1339,18 +1408,29 @@ Returns `PageResponse<AuditEvent>`:
 }
 ```
 
-Optional filters and search:
+Optional filters, search, and sorting:
 
 ```txt
 action
 resourceType
 q
+sortBy
+sortDirection
 ```
 
 Search fields:
 
 ```txt
 summary
+actorEmail
+```
+
+Allowed sort fields:
+
+```txt
+createdAt
+action
+resourceType
 actorEmail
 ```
 
@@ -1362,6 +1442,8 @@ GET /api/v1/organizations/{organizationId}/audit-events?resourceType=EVIDENCE_DO
 GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?q=audit-search@example.com&page=0&size=20
 GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&q=evidence&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?sortBy=action&sortDirection=ASC&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?q=evidence&sortBy=createdAt&sortDirection=DESC&page=0&size=20
 ```
 
 Tracked events include:
@@ -1592,6 +1674,32 @@ Common fixes:
 
 ---
 
+### Unsupported sort field
+
+If frontend sends an unsupported `sortBy`, backend returns:
+
+```http
+400 Bad Request
+```
+
+Example response:
+
+```json
+{
+  "timestamp": "2026-05-28T...",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Unsupported sort field: notAllowed",
+  "path": "/api/v1/organizations/{organizationId}/tasks",
+  "requestId": "...",
+  "fieldViolations": []
+}
+```
+
+Use only documented sort fields for each endpoint.
+
+---
+
 ### PowerShell does not support `-SkipHttpErrorCheck`
 
 Older Windows PowerShell may not support:
@@ -1727,7 +1835,7 @@ Before real deployment:
 The latest frontend API contract file generated during development:
 
 ```txt
-complipilot-fe-api-contract-v0.8.md
+complipilot-fe-api-contract-v0.9.md
 ```
 
 Frontend local Maven backend:
@@ -1756,7 +1864,7 @@ These return:
 PageResponse<T>
 ```
 
-New in v0.8:
+New in v0.9:
 
 ```txt
 /tasks supports:
@@ -1765,16 +1873,22 @@ New in v0.8:
   assigneeUserId
   complianceItemId
   q
+  sortBy
+  sortDirection
 
 /evidence supports:
   evidenceType
   sourceType
   q
+  sortBy
+  sortDirection
 
 /audit-events supports:
   action
   resourceType
   q
+  sortBy
+  sortDirection
 ```
 
 Keyword search fields:
@@ -1791,6 +1905,31 @@ Keyword search fields:
 
 /audit-events q:
   summary
+  actorEmail
+```
+
+Allowed sort fields:
+
+```txt
+/tasks sortBy:
+  createdAt
+  updatedAt
+  dueDate
+  priority
+  status
+  title
+
+/evidence sortBy:
+  createdAt
+  updatedAt
+  title
+  evidenceType
+  sourceType
+
+/audit-events sortBy:
+  createdAt
+  action
+  resourceType
   actorEmail
 ```
 
@@ -1823,6 +1962,9 @@ Audit event filters
 Keyword search for tasks
 Keyword search for evidence
 Keyword search for audit events
+Task list sorting
+Evidence list sorting
+Audit event sorting
 Request ID / observability
 CORS hardening
 Auth endpoint rate limiting
@@ -1842,6 +1984,5 @@ Advanced role management
 Email invitations
 Evidence OCR/AI extraction
 Compliance report export
-Advanced API sorting options
-
+Advanced API sort stability / secondary sort
 ```
