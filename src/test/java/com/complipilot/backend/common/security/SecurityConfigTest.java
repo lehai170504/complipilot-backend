@@ -13,20 +13,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
-
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(SecurityConfigTest.TestcontainersConfig.class)
+@ActiveProfiles("test")
 class SecurityConfigTest {
 
     @Autowired
@@ -124,17 +118,5 @@ class SecurityConfigTest {
                 )
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string("X-Request-Id", notNullValue()));
-    }
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class TestcontainersConfig {
-
-        @Bean
-        @ServiceConnection
-        PostgreSQLContainer<?> postgresContainer() {
-            return new PostgreSQLContainer<>(
-                    DockerImageName.parse("postgres:16-alpine")
-            );
-        }
     }
 }
