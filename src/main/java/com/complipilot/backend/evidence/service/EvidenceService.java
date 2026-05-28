@@ -3,6 +3,9 @@ package com.complipilot.backend.evidence.service;
 import java.util.List;
 import java.util.UUID;
 
+import com.complipilot.backend.audit.enums.AuditAction;
+import com.complipilot.backend.audit.enums.AuditResourceType;
+import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
@@ -43,6 +46,7 @@ public class EvidenceService {
     private final TenantAccessService tenantAccessService;
     private final StorageService storageService;
     private final StorageProperties storageProperties;
+    private final AuditService auditService;
 
     public EvidenceService(
             EvidenceDocumentRepository evidenceDocumentRepository,
@@ -52,7 +56,8 @@ public class EvidenceService {
             UserRepository userRepository,
             TenantAccessService tenantAccessService,
             StorageService storageService,
-            StorageProperties storageProperties
+            StorageProperties storageProperties,
+            AuditService auditService
     ) {
         this.evidenceDocumentRepository = evidenceDocumentRepository;
         this.evidenceLinkRepository = evidenceLinkRepository;
@@ -62,6 +67,7 @@ public class EvidenceService {
         this.tenantAccessService = tenantAccessService;
         this.storageService = storageService;
         this.storageProperties = storageProperties;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -92,6 +98,22 @@ public class EvidenceService {
                         request.contentType(),
                         request.fileSizeBytes(),
                         uploadedByUser
+                )
+        );
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.EVIDENCE_DOCUMENT_CREATED,
+                AuditResourceType.EVIDENCE_DOCUMENT,
+                evidenceDocument.getId(),
+                "Created evidence document",
+                """
+                {"title":"%s","sourceType":"%s","evidenceType":"%s"}
+                """.formatted(
+                        evidenceDocument.getTitle(),
+                        evidenceDocument.getSourceType(),
+                        evidenceDocument.getEvidenceType()
                 )
         );
 
@@ -135,6 +157,21 @@ public class EvidenceService {
                 request.externalUrl()
         );
 
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.EVIDENCE_DOCUMENT_UPDATED,
+                AuditResourceType.EVIDENCE_DOCUMENT,
+                evidenceDocument.getId(),
+                "Updated evidence document",
+                """
+                {"title":"%s","evidenceType":"%s"}
+                """.formatted(
+                        evidenceDocument.getTitle(),
+                        evidenceDocument.getEvidenceType()
+                )
+        );
+
         return toEvidenceDocumentResponse(evidenceDocument);
     }
 
@@ -151,6 +188,18 @@ public class EvidenceService {
                 .orElseThrow(() -> new NotFoundException("Evidence document not found"));
 
         evidenceDocument.archive();
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.EVIDENCE_DOCUMENT_ARCHIVED,
+                AuditResourceType.EVIDENCE_DOCUMENT,
+                evidenceDocument.getId(),
+                "Archived evidence document",
+                """
+                {"title":"%s"}
+                """.formatted(evidenceDocument.getTitle())
+        );
     }
 
     @Transactional
@@ -189,6 +238,21 @@ public class EvidenceService {
                         complianceItem,
                         evidenceDocument,
                         linkedByUser
+                )
+        );
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.EVIDENCE_LINK_CREATED,
+                AuditResourceType.EVIDENCE_LINK,
+                link.getId(),
+                "Linked evidence to compliance item",
+                """
+                {"complianceItemId":"%s","evidenceDocumentId":"%s"}
+                """.formatted(
+                        complianceItem.getId(),
+                        evidenceDocument.getId()
                 )
         );
 
@@ -237,6 +301,21 @@ public class EvidenceService {
                         evidenceDocumentId
                 )
                 .orElseThrow(() -> new NotFoundException("Evidence link not found"));
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.EVIDENCE_LINK_DELETED,
+                AuditResourceType.EVIDENCE_LINK,
+                link.getId(),
+                "Unlinked evidence from compliance item",
+                """
+                {"complianceItemId":"%s","evidenceDocumentId":"%s"}
+                """.formatted(
+                        complianceItemId,
+                        evidenceDocumentId
+                )
+        );
 
         evidenceLinkRepository.delete(link);
     }

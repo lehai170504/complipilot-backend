@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.complipilot.backend.audit.enums.AuditAction;
+import com.complipilot.backend.audit.enums.AuditResourceType;
+import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.compliance.dto.ComplianceSummaryResponse;
@@ -40,6 +43,7 @@ public class ComplianceService {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final TenantAccessService tenantAccessService;
+    private final AuditService auditService;
 
     public ComplianceService(
             ComplianceFrameworkRepository frameworkRepository,
@@ -47,7 +51,8 @@ public class ComplianceService {
             CompanyComplianceItemRepository companyComplianceItemRepository,
             OrganizationRepository organizationRepository,
             UserRepository userRepository,
-            TenantAccessService tenantAccessService
+            TenantAccessService tenantAccessService,
+            AuditService auditService
     ) {
         this.frameworkRepository = frameworkRepository;
         this.requirementRepository = requirementRepository;
@@ -55,6 +60,7 @@ public class ComplianceService {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.tenantAccessService = tenantAccessService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -238,6 +244,18 @@ public class ComplianceService {
                 )
         );
 
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.COMPLIANCE_ITEM_CREATED,
+                AuditResourceType.COMPLIANCE_ITEM,
+                item.getId(),
+                "Created compliance item",
+                """
+                {"requirementId":"%s","requirementCode":"%s"}
+                """.formatted(requirement.getId(), requirement.getCode())
+        );
+
         return toCompanyComplianceItemResponse(item);
     }
 
@@ -283,6 +301,18 @@ public class ComplianceService {
 
             createdItems.add(toCompanyComplianceItemResponse(item));
         }
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.COMPLIANCE_FRAMEWORK_APPLIED,
+                AuditResourceType.COMPLIANCE_FRAMEWORK,
+                frameworkId,
+                "Applied compliance framework to organization",
+                """
+                {"createdCount":%d,"skippedCount":%d}
+                """.formatted(createdItems.size(), skippedCount)
+        );
 
         return new ApplyFrameworkResponse(
                 organizationId,
@@ -358,6 +388,8 @@ public class ComplianceService {
                 .findByIdAndOrganization_Id(itemId, organizationId)
                 .orElseThrow(() -> new NotFoundException("Compliance item not found"));
 
+        CompanyComplianceStatus oldStatus = item.getStatus();
+
         if (request.status() != null) {
             item.updateStatus(request.status());
         }
@@ -374,6 +406,18 @@ public class ComplianceService {
                 ownerUser,
                 request.dueDate(),
                 request.notes()
+        );
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.COMPLIANCE_ITEM_UPDATED,
+                AuditResourceType.COMPLIANCE_ITEM,
+                item.getId(),
+                "Updated compliance item",
+                """
+                {"oldStatus":"%s","newStatus":"%s"}
+                """.formatted(oldStatus, item.getStatus())
         );
 
         return toCompanyComplianceItemResponse(item);
