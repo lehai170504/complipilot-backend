@@ -79,18 +79,18 @@ class AuditControllerTest {
                                 .header("Authorization", "Bearer " + session.accessToken())
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id", notNullValue()))
-                .andExpect(jsonPath("$[0].organizationId", is(session.organizationId())))
-                .andExpect(jsonPath("$[0].actorUserId", notNullValue()))
-                .andExpect(jsonPath("$[0].actorEmail", is("audit-flow@example.com")))
-                .andExpect(jsonPath("$[*].action", hasItem("COMPLIANCE_FRAMEWORK_APPLIED")))
-                .andExpect(jsonPath("$[*].action", hasItem("COMPLIANCE_ITEM_UPDATED")))
-                .andExpect(jsonPath("$[*].action", hasItem("EVIDENCE_DOCUMENT_CREATED")))
-                .andExpect(jsonPath("$[*].action", hasItem("EVIDENCE_LINK_CREATED")))
-                .andExpect(jsonPath("$[*].summary", hasItem("Applied compliance framework to organization")))
-                .andExpect(jsonPath("$[*].summary", hasItem("Updated compliance item")))
-                .andExpect(jsonPath("$[*].summary", hasItem("Created evidence document")))
-                .andExpect(jsonPath("$[*].summary", hasItem("Linked evidence to compliance item")));
+                .andExpect(jsonPath("$.items[0].id", notNullValue()))
+                .andExpect(jsonPath("$.items[0].organizationId", is(session.organizationId())))
+                .andExpect(jsonPath("$.items[0].actorUserId", notNullValue()))
+                .andExpect(jsonPath("$.items[0].actorEmail", is("audit-flow@example.com")))
+                .andExpect(jsonPath("$.items[*].action", hasItem("COMPLIANCE_FRAMEWORK_APPLIED")))
+                .andExpect(jsonPath("$.items[*].action", hasItem("COMPLIANCE_ITEM_UPDATED")))
+                .andExpect(jsonPath("$.items[*].action", hasItem("EVIDENCE_DOCUMENT_CREATED")))
+                .andExpect(jsonPath("$.items[*].action", hasItem("EVIDENCE_LINK_CREATED")))
+                .andExpect(jsonPath("$.items[*].summary", hasItem("Applied compliance framework to organization")))
+                .andExpect(jsonPath("$.items[*].summary", hasItem("Updated compliance item")))
+                .andExpect(jsonPath("$.items[*].summary", hasItem("Created evidence document")))
+                .andExpect(jsonPath("$.items[*].summary", hasItem("Linked evidence to compliance item")));
     }
 
     @Test
@@ -121,10 +121,14 @@ class AuditControllerTest {
                                 .header("Authorization", "Bearer " + session.accessToken())
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()", is(2)))
-                .andExpect(jsonPath("$[0].action", is("EVIDENCE_DOCUMENT_CREATED")))
-                .andExpect(jsonPath("$[0].resourceId", is(evidenceId)))
-                .andExpect(jsonPath("$[1].action", is("COMPLIANCE_FRAMEWORK_APPLIED")));
+                .andExpect(jsonPath("$.items.length()", is(2)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalItems", is(2)))
+                .andExpect(jsonPath("$.totalPages", is(1)))
+                .andExpect(jsonPath("$.items[0].action", is("EVIDENCE_DOCUMENT_CREATED")))
+                .andExpect(jsonPath("$.items[0].resourceId", is(evidenceId)))
+                .andExpect(jsonPath("$.items[1].action", is("COMPLIANCE_FRAMEWORK_APPLIED")));
     }
 
     @Test

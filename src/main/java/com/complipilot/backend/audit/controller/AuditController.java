@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.complipilot.backend.audit.dto.AuditEventResponse;
 import com.complipilot.backend.audit.service.AuditService;
+import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Audit Trail", description = "Organization activity and audit events")
@@ -28,18 +30,22 @@ public class AuditController {
     }
 
     @Operation(
-            summary = "List recent organization audit events",
+            summary = "List audit events",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @GetMapping("/api/v1/organizations/{organizationId}/audit-events")
-    public ResponseEntity<List<AuditEventResponse>> listRecentEvents(
+    public ResponseEntity<PageResponse<AuditEventResponse>> listAuditEvents(
             @PathVariable UUID organizationId,
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(
-                auditService.listRecentEvents(
+                auditService.listAuditEventsPage(
                         organizationId,
-                        authenticatedUser.id()
+                        authenticatedUser.id(),
+                        page,
+                        size
                 )
         );
     }

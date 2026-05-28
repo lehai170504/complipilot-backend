@@ -6,11 +6,14 @@ import com.complipilot.backend.audit.enums.AuditAction;
 import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.repository.AuditEventRepository;
 import com.complipilot.backend.common.error.NotFoundException;
+import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.organization.service.TenantAccessService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,6 +84,32 @@ public class AuditService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AuditEventResponse> listAuditEventsPage(
+            UUID organizationId,
+            UUID currentUserId,
+            int page,
+            int size
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+
+        return PageResponse.from(
+                auditEventRepository
+                        .findByOrganization_Id(
+                                organizationId,
+                                PageRequest.of(
+                                        safePage,
+                                        safeSize,
+                                        Sort.by(Sort.Direction.DESC, "createdAt")
+                                )
+                        )
+                        .map(this::toResponse)
+        );
     }
 
     private AuditEventResponse toResponse(AuditEvent auditEvent) {
