@@ -2,6 +2,9 @@ spring:
   application:
     name: complipilot-backend
 
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
   datasource:
     url: "${DATABASE_URL:jdbc:postgresql://localhost:5433/complipilot}"
     username: "${DATABASE_USERNAME:complipilot}"
@@ -21,6 +24,8 @@ spring:
 
 server:
   port: "${API_PORT:8081}"
+  shutdown: graceful
+
 
 management:
   endpoints:
