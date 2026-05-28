@@ -2,7 +2,7 @@
 
 CompliPilot Backend is the Spring Boot API for **CompliPilot — AI Compliance & Evidence OS**.
 
-The backend provides authentication, organization tenancy, compliance framework management, evidence management, audit trail, and compliance task tracking.
+The backend provides authentication, organization tenancy, compliance framework management, evidence management, audit trail, compliance task tracking, observability, and production-oriented security foundations.
 
 ---
 
@@ -21,6 +21,7 @@ The backend provides authentication, organization tenancy, compliance framework 
 * Maven Wrapper
 * Docker / Docker Compose
 * GitHub Actions CI
+* Caffeine cache
 
 ---
 
@@ -36,6 +37,32 @@ Module D — Evidence Management
 Module E — Audit Trail
 Module F — Compliance Tasks / Deadline Views
 Module H — Production Hardening
+```
+
+Completed backend capabilities:
+
+```txt
+Backend foundation
+Authentication
+JWT access token security
+Refresh token rotation
+Organizations / tenancy
+Compliance frameworks
+Compliance items
+Due soon / overdue compliance views
+Evidence metadata
+MinIO presigned upload/download URLs
+Evidence-to-control linking
+Audit trail
+Compliance tasks
+Request ID / correlation logging
+CORS hardening
+Auth endpoint rate limiting
+Actuator health/info
+Dockerfile
+Production profile
+Production compose
+GitHub Actions CI
 ```
 
 ---
@@ -98,6 +125,14 @@ DATABASE_PASSWORD=123456
 JWT_SECRET=local-dev-secret-key-change-this-in-production-please-123456
 JWT_ISSUER=complipilot-backend
 JWT_ACCESS_TOKEN_EXPIRATION_SECONDS=3600
+JWT_REFRESH_TOKEN_EXPIRATION_SECONDS=2592000
+JWT_REFRESH_TOKEN_CLEANUP_FIXED_RATE_MS=3600000
+JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS=604800
+
+# Rate limit
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_AUTH_CAPACITY=20
+RATE_LIMIT_AUTH_WINDOW_SECONDS=60
 
 # MinIO
 MINIO_ROOT_USER=complipilot
@@ -224,6 +259,18 @@ Health check:
 Invoke-RestMethod http://localhost:8081/api/v1/health
 ```
 
+Actuator health:
+
+```powershell
+Invoke-RestMethod http://localhost:8081/actuator/health
+```
+
+Actuator info:
+
+```powershell
+Invoke-RestMethod http://localhost:8081/actuator/info | ConvertTo-Json -Depth 10
+```
+
 Swagger:
 
 ```txt
@@ -309,6 +356,14 @@ org.springframework.test.context.bean.override.mockito.MockitoBean
 Do not use old @MockBean unless intentionally needed.
 ```
 
+Rate limit is disabled by default for most tests in:
+
+```txt
+src/test/resources/application.yml
+```
+
+Only dedicated rate limit tests should enable it explicitly.
+
 If tests fail with:
 
 ```txt
@@ -319,6 +374,16 @@ that is usually not the real root cause. Check the first error in:
 
 ```txt
 target/surefire-reports
+```
+
+Common fixes:
+
+```txt
+1. Add TestcontainersConfig for PostgreSQL.
+2. Mock StorageService using @MockitoBean.
+3. Register JavaTimeModule for ObjectMapper.
+4. Check repository method names for nested JPA fields.
+5. Disable rate limit for broad integration tests.
 ```
 
 ---
@@ -391,9 +456,15 @@ docker run --rm `
   -e DATABASE_USERNAME=complipilot `
   -e DATABASE_PASSWORD=123456 `
   -e APP_CORS_ALLOWED_ORIGINS=http://localhost:3000 `
-  -e JWT_SECRET=local-dev-secret-key-change-this-in-production-please-123456 `
+  -e JWT_SECRET=dev-prod-local-run-secret-9cfc4f5b47b54b3c9e6b0db3a0d4d2b8 `
   -e JWT_ISSUER=complipilot-backend `
   -e JWT_ACCESS_TOKEN_EXPIRATION_SECONDS=3600 `
+  -e JWT_REFRESH_TOKEN_EXPIRATION_SECONDS=2592000 `
+  -e JWT_REFRESH_TOKEN_CLEANUP_FIXED_RATE_MS=3600000 `
+  -e JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS=604800 `
+  -e RATE_LIMIT_ENABLED=true `
+  -e RATE_LIMIT_AUTH_CAPACITY=20 `
+  -e RATE_LIMIT_AUTH_WINDOW_SECONDS=60 `
   -e MINIO_ENDPOINT=http://complipilot-backend-minio:9000 `
   -e MINIO_PUBLIC_ENDPOINT=http://localhost:9000 `
   -e MINIO_ACCESS_KEY=complipilot `
@@ -435,8 +506,9 @@ notepad .env.prod.local
 Recommended local test values:
 
 ```env
+API_PORT=8082
 APP_CORS_ALLOWED_ORIGINS=http://localhost:3000
-JWT_SECRET=local-prod-test-secret-key-change-this-please-1234567890
+JWT_SECRET=dev-prod-local-run-secret-9cfc4f5b47b54b3c9e6b0db3a0d4d2b8
 MINIO_PUBLIC_ENDPOINT=http://localhost:9000
 SPRINGDOC_ENABLED=true
 ```
@@ -456,7 +528,13 @@ docker compose --env-file .env.prod.local -f docker-compose.prod.yml ps
 Health:
 
 ```powershell
-Invoke-RestMethod http://localhost:8080/api/v1/health
+Invoke-RestMethod http://localhost:8082/api/v1/health
+```
+
+Actuator info:
+
+```powershell
+Invoke-RestMethod http://localhost:8082/actuator/info | ConvertTo-Json -Depth 10
 ```
 
 Stop:
@@ -480,8 +558,11 @@ docker compose --env-file .env.prod.local -f docker-compose.prod.yml down -v
 ```http
 GET  /api/v1/health
 GET  /actuator/health
+GET  /actuator/info
 POST /api/v1/auth/register
 POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
 GET  /swagger-ui/**
 GET  /v3/api-docs/**
 ```
@@ -513,6 +594,18 @@ Request:
 }
 ```
 
+Register creates:
+
+```txt
+User
+Organization
+OWNER membership
+```
+
+Register does not automatically login. Frontend should call login after registration.
+
+---
+
 ### Login
 
 ```http
@@ -533,6 +626,7 @@ Response contains:
 ```json
 {
   "accessToken": "...",
+  "refreshToken": "...",
   "tokenType": "Bearer",
   "expiresInSeconds": 3600,
   "user": {
@@ -542,6 +636,87 @@ Response contains:
   }
 }
 ```
+
+Access token is used in:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+Refresh token is used to obtain a new access token.
+
+---
+
+### Refresh Token Flow
+
+```http
+POST /api/v1/auth/refresh
+```
+
+Request:
+
+```json
+{
+  "refreshToken": "<refreshToken>"
+}
+```
+
+Response:
+
+```json
+{
+  "accessToken": "...",
+  "refreshToken": "...",
+  "tokenType": "Bearer",
+  "expiresInSeconds": 3600,
+  "user": {
+    "id": "...",
+    "email": "hai@example.com",
+    "fullName": "Lê Hoàng Hải"
+  }
+}
+```
+
+Important:
+
+```txt
+Refresh token rotation is enabled.
+After refresh succeeds, the old refresh token is revoked.
+Frontend must store the new refresh token returned by the backend.
+Backend stores only refresh token hashes.
+```
+
+Invalid, expired, revoked, or reused refresh token returns:
+
+```http
+401 Unauthorized
+```
+
+---
+
+### Logout
+
+```http
+POST /api/v1/auth/logout
+```
+
+Request:
+
+```json
+{
+  "refreshToken": "<refreshToken>"
+}
+```
+
+Response:
+
+```txt
+204 No Content
+```
+
+Logout revokes the submitted refresh token. Frontend should clear local auth state after logout.
+
+---
 
 ### Current User
 
@@ -553,6 +728,238 @@ GET /api/v1/me
 
 ```http
 GET /api/v1/me/organizations
+```
+
+---
+
+## Recommended Frontend Auth Flow
+
+### Login flow
+
+```txt
+1. POST /api/v1/auth/login
+2. Store accessToken and refreshToken
+3. GET /api/v1/me
+4. GET /api/v1/me/organizations
+5. Set active organization
+```
+
+### Refresh flow
+
+```txt
+1. API request returns 401 Unauthorized
+2. Frontend calls POST /api/v1/auth/refresh with stored refreshToken
+3. If refresh succeeds:
+   - Store new accessToken
+   - Store new refreshToken
+   - Retry the original request once
+4. If refresh fails:
+   - Clear auth state
+   - Redirect user to login
+```
+
+### Logout flow
+
+```txt
+1. POST /api/v1/auth/logout with current refreshToken
+2. Clear accessToken, refreshToken, user, and active organization from frontend state
+3. Redirect to login
+```
+
+Frontend must not retry refresh endlessly. Retry the failed request once only.
+
+---
+
+## Refresh Token Cleanup
+
+Refresh tokens are stored as hashes in the database.
+
+Cleanup job deletes:
+
+```txt
+expired refresh tokens
+revoked refresh tokens older than retention window
+```
+
+Config:
+
+```env
+JWT_REFRESH_TOKEN_CLEANUP_FIXED_RATE_MS=3600000
+JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS=604800
+```
+
+Defaults:
+
+```txt
+Cleanup every 1 hour
+Keep revoked tokens for 7 days
+```
+
+For MVP, cleanup runs inside the backend app instance.
+
+For multi-instance production deployment, this can later be improved with:
+
+```txt
+distributed lock
+dedicated scheduler
+database scheduled job
+```
+
+---
+
+## Rate Limiting
+
+Auth endpoints are rate limited to reduce brute-force attempts.
+
+Rate-limited endpoints:
+
+```txt
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+```
+
+Local defaults:
+
+```env
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_AUTH_CAPACITY=20
+RATE_LIMIT_AUTH_WINDOW_SECONDS=60
+```
+
+Production defaults:
+
+```env
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_AUTH_CAPACITY=10
+RATE_LIMIT_AUTH_WINDOW_SECONDS=60
+```
+
+When the limit is exceeded, backend returns:
+
+```http
+429 Too Many Requests
+```
+
+With headers:
+
+```http
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 2026-05-28T...
+Retry-After: 60
+```
+
+And body:
+
+```json
+{
+  "timestamp": "2026-05-28T...",
+  "status": 429,
+  "error": "Too Many Requests",
+  "message": "Too many authentication requests. Please try again later.",
+  "path": "/api/v1/auth/login",
+  "requestId": "...",
+  "fieldViolations": []
+}
+```
+
+For tests, rate limit is disabled by default in:
+
+```txt
+src/test/resources/application.yml
+```
+
+Only dedicated rate limit tests enable it.
+
+---
+
+## Request ID / Observability
+
+Backend returns `X-Request-Id` on every response.
+
+If frontend sends:
+
+```http
+X-Request-Id: frontend-request-id
+```
+
+Backend echoes the same value.
+
+If frontend does not send it, backend generates a UUID.
+
+Error responses include the same request id:
+
+```json
+{
+  "timestamp": "2026-05-28T...",
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Authentication is required",
+  "path": "/api/v1/me",
+  "requestId": "8f8a3c5d-...",
+  "fieldViolations": []
+}
+```
+
+Logs also include request id through MDC.
+
+This makes production debugging easier:
+
+```txt
+User reports error requestId
+Developer searches logs by requestId
+```
+
+---
+
+## CORS
+
+Local frontend origin:
+
+```txt
+http://localhost:3000
+```
+
+Backend env:
+
+```env
+APP_CORS_ALLOWED_ORIGINS=http://localhost:3000
+```
+
+Production example:
+
+```env
+APP_CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
+```
+
+Do not use `*` in production.
+
+Backend allows these request headers from configured origins:
+
+```txt
+Authorization
+Content-Type
+X-Request-Id
+```
+
+Backend exposes this response header:
+
+```txt
+X-Request-Id
+```
+
+Manual preflight test:
+
+```powershell
+curl.exe -i -X OPTIONS http://localhost:8081/api/v1/auth/login `
+  -H "Origin: http://localhost:3000" `
+  -H "Access-Control-Request-Method: POST"
+```
+
+Expected:
+
+```txt
+Access-Control-Allow-Origin: http://localhost:3000
 ```
 
 ---
@@ -634,6 +1041,20 @@ COMPLIANT
 
 WAIVED
   -> OPEN
+```
+
+Due soon rules:
+
+```txt
+dueDate is from today through today + 14 days
+status is not COMPLIANT or WAIVED
+```
+
+Overdue rules:
+
+```txt
+dueDate is before today
+status is not COMPLIANT or WAIVED
 ```
 
 ---
@@ -847,6 +1268,7 @@ Check port:
 ```powershell
 netstat -ano | findstr :8080
 netstat -ano | findstr :8081
+netstat -ano | findstr :8082
 ```
 
 Find process:
@@ -859,8 +1281,10 @@ Local recommendation:
 
 ```txt
 Use backend port 8081 for Maven local dev.
-Use backend port 8080 for production-like Docker.
+Use backend port 8082 for production-like Docker if 8080 is occupied.
 ```
+
+If `taskkill` fails with access denied, do not force kill system services. Change `API_PORT` instead.
 
 ---
 
@@ -941,6 +1365,37 @@ Common fixes:
 2. Mock StorageService using @MockitoBean.
 3. Register JavaTimeModule for ObjectMapper.
 4. Check repository method names for nested JPA fields.
+5. Disable rate limit for broad integration tests.
+```
+
+---
+
+### PowerShell does not support `-SkipHttpErrorCheck`
+
+Older Windows PowerShell may not support:
+
+```powershell
+-SkipHttpErrorCheck
+```
+
+Use `curl.exe` instead:
+
+```powershell
+curl.exe -i http://localhost:8081/api/v1/me
+```
+
+or use try/catch:
+
+```powershell
+try {
+  Invoke-WebRequest http://localhost:8081/api/v1/me
+} catch {
+  $_.Exception.Response.StatusCode.value__
+  $_.Exception.Response.StatusDescription
+
+  $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+  $reader.ReadToEnd()
+}
 ```
 
 ---
@@ -1025,13 +1480,20 @@ Before real deployment:
 
 * Use strong `POSTGRES_PASSWORD`
 * Use strong `JWT_SECRET` with at least 64 random characters
+* Configure `JWT_REFRESH_TOKEN_EXPIRATION_SECONDS`
+* Configure refresh token cleanup schedule
+* Configure auth rate limit values
 * Set `APP_CORS_ALLOWED_ORIGINS` to real frontend domain
+* Do not use `*` for production CORS
 * Set `SPRINGDOC_ENABLED=false`
 * Use persistent PostgreSQL volume or managed PostgreSQL
 * Use private MinIO/S3 bucket
 * Configure HTTPS at reverse proxy/load balancer
 * Configure database backup
 * Configure log collection
+* Verify `X-Request-Id` appears in logs and error responses
+* Verify `/actuator/health` works
+* Verify `/actuator/info` works
 * Run Flyway migrations on startup
 * Run CI before deploy
 * Never commit real `.env` files
@@ -1043,19 +1505,19 @@ Before real deployment:
 The latest frontend API contract file generated during development:
 
 ```txt
-complipilot-fe-api-contract-v0.3.md
+complipilot-fe-api-contract-v0.5.md
 ```
 
-Frontend should use:
+Frontend local Maven backend:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
 ```
 
-For Docker production-like local testing:
+Frontend production-like Docker backend:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8082
 ```
 
 ---
@@ -1067,14 +1529,21 @@ Completed:
 ```txt
 Backend foundation
 Authentication
-JWT security
+JWT access token security
+Refresh token rotation
+Refresh token cleanup
 Organizations / tenancy
 Compliance frameworks
 Compliance items
+Due soon / overdue compliance views
 Evidence metadata
 MinIO presigned upload/download URLs
 Audit trail
 Compliance tasks
+Request ID / observability
+CORS hardening
+Auth endpoint rate limiting
+Actuator health/info
 Dockerfile
 Production profile
 Production compose
@@ -1084,9 +1553,11 @@ GitHub Actions CI
 Next recommended work:
 
 ```txt
-Env validation startup checks
-Structured logging
-Refresh tokens
 Frontend implementation
+API pagination/sorting for audit/tasks/evidence
 Deployment setup
+Advanced role management
+Email invitations
+Evidence OCR/AI extraction
+Compliance report export
 ```
