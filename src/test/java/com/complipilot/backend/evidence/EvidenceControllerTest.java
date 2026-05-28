@@ -196,6 +196,27 @@ class EvidenceControllerTest {
     }
 
     @Test
+    void shouldRejectInvalidEvidenceTypeFilter() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "evidence-invalid-filter@example.com",
+                "Evidence Invalid Filter User",
+                "Evidence Invalid Filter Company"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/evidence?evidenceType=WRONG&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Invalid value 'WRONG' for query parameter 'evidenceType'")))
+                .andExpect(jsonPath("$.requestId", notNullValue()));
+    }
+
+    @Test
     void shouldLinkListAndUnlinkEvidenceFromComplianceItem() throws Exception {
         TestWorkspace workspace = createWorkspaceWithAppliedFramework(
                 "evidence-link@example.com",

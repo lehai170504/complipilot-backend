@@ -172,6 +172,27 @@ class AuditControllerTest {
     }
 
     @Test
+    void shouldRejectInvalidAuditActionFilter() throws Exception {
+        AuthSession session = registerAndLogin(
+                "audit-invalid-filter@example.com",
+                "Audit Invalid Filter User",
+                "Audit Invalid Filter Company"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/audit-events?action=WRONG&page=0&size=20",
+                                session.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Invalid value 'WRONG' for query parameter 'action'")))
+                .andExpect(jsonPath("$.requestId", notNullValue()));
+    }
+
+    @Test
     void shouldPreventAuditAccessAcrossOrganizations() throws Exception {
         AuthSession ownerA = registerAndLogin(
                 "audit-owner-a@example.com",

@@ -416,6 +416,27 @@ class ComplianceTaskControllerTest {
                 .andExpect(jsonPath("$.totalItems", is(1)));
     }
 
+    @Test
+    void shouldRejectInvalidTaskStatusFilter() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-invalid-filter@example.com",
+                "Task Invalid Filter User",
+                "Task Invalid Filter Company"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?status=WRONG&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Invalid value 'WRONG' for query parameter 'status'")))
+                .andExpect(jsonPath("$.requestId", notNullValue()));
+    }
+
     private TestWorkspace createWorkspaceWithAppliedFramework(
             String email,
             String fullName,
