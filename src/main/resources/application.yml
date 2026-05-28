@@ -31,6 +31,9 @@ management:
     health:
       probes:
         enabled: true
+  info:
+    env:
+      enabled: true
 
 springdoc:
   api-docs:
@@ -56,3 +59,9 @@ app:
     bucket: "${MINIO_BUCKET_EVIDENCE:complipilot-evidence}"
     public-endpoint: "${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}"
     presigned-url-expiration-minutes: "${MINIO_PRESIGNED_URL_EXPIRATION_MINUTES:15}"
+
+info:
+  app:
+    name: CompliPilot Backend
+    description: AI Compliance & Evidence OS backend API
+    version: 0.0.1-SNAPSHOT
