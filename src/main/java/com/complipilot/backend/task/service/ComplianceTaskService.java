@@ -4,6 +4,7 @@ import com.complipilot.backend.audit.enums.AuditAction;
 import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.error.NotFoundException;
+import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
 import com.complipilot.backend.identity.entity.User;
@@ -18,6 +19,8 @@ import com.complipilot.backend.task.dto.UpdateComplianceTaskRequest;
 import com.complipilot.backend.task.entity.ComplianceTask;
 import com.complipilot.backend.task.enums.ComplianceTaskStatus;
 import com.complipilot.backend.task.repository.ComplianceTaskRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,17 +119,29 @@ public class ComplianceTaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<ComplianceTaskResponse> listTasks(
+    public PageResponse<ComplianceTaskResponse> listTasks(
             UUID organizationId,
-            UUID currentUserId
+            UUID currentUserId,
+            int page,
+            int size
     ) {
         tenantAccessService.requireActiveMember(organizationId, currentUserId);
 
-        return complianceTaskRepository
-                .findByOrganization_IdOrderByCreatedAtDesc(organizationId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+
+        return PageResponse.from(
+                complianceTaskRepository
+                        .findByOrganization_Id(
+                                organizationId,
+                                PageRequest.of(
+                                        safePage,
+                                        safeSize,
+                                        Sort.by(Sort.Direction.DESC, "createdAt")
+                                )
+                        )
+                        .map(this::toResponse)
+        );
     }
 
     @Transactional(readOnly = true)

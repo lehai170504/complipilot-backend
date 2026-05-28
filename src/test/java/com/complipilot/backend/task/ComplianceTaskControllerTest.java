@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 
+import com.complipilot.backend.common.storage.StorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -19,13 +20,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(ComplianceTaskControllerTest.TestcontainersConfig.class)
 class ComplianceTaskControllerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -33,6 +43,9 @@ class ComplianceTaskControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private StorageService storageService;
 
     @Test
     void shouldCreateListUpdateAndCompleteComplianceTask() throws Exception {
@@ -59,11 +72,15 @@ class ComplianceTaskControllerTest {
                                 .header("Authorization", "Bearer " + workspace.accessToken())
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id", is(taskId)))
-                .andExpect(jsonPath("$[0].title", is("Upload MFA evidence")))
-                .andExpect(jsonPath("$[0].status", is("OPEN")))
-                .andExpect(jsonPath("$[0].priority", is("HIGH")))
-                .andExpect(jsonPath("$[0].dueDate", is(dueDate)));
+                .andExpect(jsonPath("$.items[0].id", is(taskId)))
+                .andExpect(jsonPath("$.items[0].title", is("Upload MFA evidence")))
+                .andExpect(jsonPath("$.items[0].status", is("OPEN")))
+                .andExpect(jsonPath("$.items[0].priority", is("HIGH")))
+                .andExpect(jsonPath("$.items[0].dueDate", is(dueDate)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
 
         String updateBody = """
                 {
@@ -230,7 +247,53 @@ class ComplianceTaskControllerTest {
                                 .header("Authorization", "Bearer " + workspace.accessToken())
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()", is(0)));
+                .andExpect(jsonPath("$.items.length()", is(0)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalItems", is(0)))
+                .andExpect(jsonPath("$.totalPages", is(0)));
+    }
+
+    @Test
+    void shouldReturnPaginatedComplianceTasks() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-page@example.com",
+                "Task Page User",
+                "Task Page Company"
+        );
+
+        createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "Task A",
+                "First task.",
+                "LOW",
+                LocalDate.now().plusDays(1).toString()
+        );
+
+        createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "Task B",
+                "Second task.",
+                "MEDIUM",
+                LocalDate.now().plusDays(2).toString()
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?page=0&size=1",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.page", is(0)))
+                .andExpect(jsonPath("$.size", is(1)))
+                .andExpect(jsonPath("$.totalItems", is(2)))
+                .andExpect(jsonPath("$.totalPages", is(2)));
     }
 
     @Test
@@ -369,6 +432,7 @@ class ComplianceTaskControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andExpect(jsonPath("$.refreshToken", notNullValue()))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -434,5 +498,17 @@ class ComplianceTaskControllerTest {
             String organizationId,
             String firstComplianceItemId
     ) {
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TestcontainersConfig {
+
+        @Bean
+        @ServiceConnection
+        PostgreSQLContainer<?> postgresContainer() {
+            return new PostgreSQLContainer<>(
+                    DockerImageName.parse("postgres:16-alpine")
+            );
+        }
     }
 }
