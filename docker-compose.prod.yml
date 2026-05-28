@@ -1,0 +1,86 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: complipilot-backend:prod
+    container_name: complipilot-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      API_PORT: 8080
+
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_ACCESS_TOKEN_EXPIRATION_SECONDS: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS}
+
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_EVIDENCE: ${MINIO_BUCKET_EVIDENCE}
+      MINIO_PRESIGNED_URL_EXPIRATION_MINUTES: ${MINIO_PRESIGNED_URL_EXPIRATION_MINUTES}
+
+      SPRINGDOC_ENABLED: ${SPRINGDOC_ENABLED:-false}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    networks:
+      - complipilot-prod
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: complipilot-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - complipilot_prod_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - complipilot-prod
+
+  minio:
+    image: minio/minio:latest
+    container_name: complipilot-prod-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - complipilot_prod_minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - complipilot-prod
+
+volumes:
+  complipilot_prod_postgres_data:
+  complipilot_prod_minio_data:
+
+networks:
+  complipilot-prod:
+    driver: bridge
