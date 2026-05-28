@@ -5,6 +5,8 @@ import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
+import com.complipilot.backend.common.sorting.SortRequest;
+import com.complipilot.backend.common.sorting.SortUtils;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
 import com.complipilot.backend.identity.entity.User;
@@ -22,10 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class ComplianceTaskService {
@@ -120,9 +119,10 @@ public class ComplianceTaskService {
             UUID organizationId,
             UUID currentUserId,
             ComplianceTaskFilterRequest filter,
+            SortRequest sort,
             int page,
             int size
-    ) {
+    ){
         tenantAccessService.requireActiveMember(organizationId, currentUserId);
 
         int safePage = Math.max(page, 0);
@@ -131,7 +131,11 @@ public class ComplianceTaskService {
         var pageable = PageRequest.of(
                 safePage,
                 safeSize,
-                Sort.by(Sort.Direction.DESC, "createdAt")
+                SortUtils.toSort(
+                        sort,
+                        ALLOWED_TASK_SORT_FIELDS,
+                        "createdAt"
+                )
         );
 
         return PageResponse.from(
@@ -315,4 +319,14 @@ public class ComplianceTaskService {
 
         return query.trim();
     }
+
+    private static final Map<String, String> ALLOWED_TASK_SORT_FIELDS = Map.of(
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt",
+            "dueDate", "dueDate",
+            "priority", "priority",
+            "status", "status",
+            "title", "title"
+    );
+
 }

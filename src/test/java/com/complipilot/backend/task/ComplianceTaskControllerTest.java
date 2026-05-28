@@ -479,6 +479,68 @@ class ComplianceTaskControllerTest {
                 .andExpect(jsonPath("$.totalPages", is(1)));
     }
 
+    @Test
+    void shouldRejectUnsupportedTaskSortField() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-invalid-sort@example.com",
+                "Task Invalid Sort User",
+                "Task Invalid Sort Company"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?sortBy=notAllowed&sortDirection=ASC&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is("Unsupported sort field: notAllowed")))
+                .andExpect(jsonPath("$.requestId", notNullValue()));
+    }
+
+    @Test
+    void shouldSortComplianceTasksByTitleAscending() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-sort@example.com",
+                "Task Sort User",
+                "Task Sort Company"
+        );
+
+        createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "B task",
+                "Second alphabetically.",
+                "LOW",
+                LocalDate.now().plusDays(2).toString()
+        );
+
+        createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "A task",
+                "First alphabetically.",
+                "LOW",
+                LocalDate.now().plusDays(1).toString()
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?sortBy=title&sortDirection=ASC&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(2)))
+                .andExpect(jsonPath("$.items[0].title", is("A task")))
+                .andExpect(jsonPath("$.items[1].title", is("B task")));
+    }
+
+
     private TestWorkspace createWorkspaceWithAppliedFramework(
             String email,
             String fullName,

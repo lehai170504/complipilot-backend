@@ -1,6 +1,7 @@
 package com.complipilot.backend.evidence.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import com.complipilot.backend.audit.enums.AuditAction;
@@ -9,6 +10,8 @@ import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
+import com.complipilot.backend.common.sorting.SortRequest;
+import com.complipilot.backend.common.sorting.SortUtils;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
 import com.complipilot.backend.evidence.dto.*;
@@ -121,6 +124,7 @@ public class EvidenceService {
             UUID organizationId,
             UUID currentUserId,
             EvidenceFilterRequest filter,
+            SortRequest sort,
             int page,
             int size
     ) {
@@ -132,7 +136,11 @@ public class EvidenceService {
         var pageable = PageRequest.of(
                 safePage,
                 safeSize,
-                Sort.by(Sort.Direction.DESC, "createdAt")
+                SortUtils.toSort(
+                        sort,
+                        ALLOWED_EVIDENCE_SORT_FIELDS,
+                        "createdAt"
+                )
         );
 
         return PageResponse.from(
@@ -452,4 +460,12 @@ public class EvidenceService {
 
         return query.trim();
     }
+
+    private static final Map<String, String> ALLOWED_EVIDENCE_SORT_FIELDS = Map.of(
+            "createdAt", "createdAt",
+            "updatedAt", "updatedAt",
+            "title", "title",
+            "evidenceType", "evidenceType",
+            "sourceType", "sourceType"
+    );
 }

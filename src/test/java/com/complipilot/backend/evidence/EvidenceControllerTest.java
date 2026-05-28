@@ -232,6 +232,40 @@ class EvidenceControllerTest {
     }
 
     @Test
+    void shouldSortEvidenceDocumentsByTitleAscending() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "evidence-sort@example.com",
+                "Evidence Sort User",
+                "Evidence Sort Company"
+        );
+
+        createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "B evidence",
+                "https://example.com/b-evidence"
+        );
+
+        createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "A evidence",
+                "https://example.com/a-evidence"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/evidence?sortBy=title&sortDirection=ASC&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(2)))
+                .andExpect(jsonPath("$.items[0].title", is("A evidence")))
+                .andExpect(jsonPath("$.items[1].title", is("B evidence")));
+    }
+
+    @Test
     void shouldRejectInvalidEvidenceTypeFilter() throws Exception {
         TestWorkspace workspace = createWorkspaceWithAppliedFramework(
                 "evidence-invalid-filter@example.com",

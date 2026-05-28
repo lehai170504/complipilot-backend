@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
+import com.complipilot.backend.common.sorting.SortDirection;
+import com.complipilot.backend.common.sorting.SortRequest;
 import com.complipilot.backend.evidence.dto.*;
 
 import com.complipilot.backend.evidence.enums.EvidenceSourceType;
@@ -61,6 +63,8 @@ public class EvidenceController {
             @RequestParam(required = false) EvidenceType evidenceType,
             @RequestParam(required = false) EvidenceSourceType sourceType,
             @RequestParam(required = false, name = "q") String query,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(defaultValue = "DESC") SortDirection sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -72,6 +76,10 @@ public class EvidenceController {
                                 evidenceType,
                                 sourceType,
                                 query
+                        ),
+                        new SortRequest(
+                                sortBy,
+                                sortDirection
                         ),
                         page,
                         size

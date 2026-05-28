@@ -260,6 +260,41 @@ class AuditControllerTest {
     }
 
     @Test
+    void shouldSortAuditEventsByActionAscending() throws Exception {
+        AuthSession session = registerAndLogin(
+                "audit-sort@example.com",
+                "Audit Sort User",
+                "Audit Sort Company"
+        );
+
+        String frameworkId = seedSecurityBaseline(session.accessToken());
+
+        applyFramework(
+                session.accessToken(),
+                session.organizationId(),
+                frameworkId
+        );
+
+        createUrlEvidence(
+                session.accessToken(),
+                session.organizationId(),
+                "Audit sort evidence",
+                "https://example.com/audit-sort-evidence"
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/audit-events?sortBy=action&sortDirection=ASC&page=0&size=20",
+                                session.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + session.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(2)))
+                .andExpect(jsonPath("$.items[0].action", is("COMPLIANCE_FRAMEWORK_APPLIED")))
+                .andExpect(jsonPath("$.items[1].action", is("EVIDENCE_DOCUMENT_CREATED")));
+    }
+
+    @Test
     void shouldRejectAuditEventsWithoutAccessToken() throws Exception {
         mockMvc.perform(
                         get("/api/v1/organizations/{organizationId}/audit-events",

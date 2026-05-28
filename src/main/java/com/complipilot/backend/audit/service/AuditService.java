@@ -8,6 +8,8 @@ import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.repository.AuditEventRepository;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
+import com.complipilot.backend.common.sorting.SortRequest;
+import com.complipilot.backend.common.sorting.SortUtils;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.entity.Organization;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -92,6 +95,7 @@ public class AuditService {
             UUID organizationId,
             UUID currentUserId,
             AuditEventFilterRequest filter,
+            SortRequest sort,
             int page,
             int size
     ) {
@@ -103,7 +107,11 @@ public class AuditService {
         var pageable = PageRequest.of(
                 safePage,
                 safeSize,
-                Sort.by(Sort.Direction.DESC, "createdAt")
+                SortUtils.toSort(
+                        sort,
+                        ALLOWED_AUDIT_SORT_FIELDS,
+                        "createdAt"
+                )
         );
 
         return PageResponse.from(
@@ -155,5 +163,12 @@ public class AuditService {
 
         return query.trim();
     }
+
+    private static final Map<String, String> ALLOWED_AUDIT_SORT_FIELDS = Map.of(
+            "createdAt", "createdAt",
+            "action", "action",
+            "resourceType", "resourceType",
+            "actorEmail", "actorEmail"
+    );
 
 }

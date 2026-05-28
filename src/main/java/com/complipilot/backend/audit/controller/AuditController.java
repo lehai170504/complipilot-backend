@@ -11,6 +11,8 @@ import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
 
+import com.complipilot.backend.common.sorting.SortDirection;
+import com.complipilot.backend.common.sorting.SortRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,6 +45,8 @@ public class AuditController {
             @RequestParam(required = false) AuditAction action,
             @RequestParam(required = false) AuditResourceType resourceType,
             @RequestParam(required = false, name = "q") String query,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(defaultValue = "DESC") SortDirection sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -54,6 +58,10 @@ public class AuditController {
                                 action,
                                 resourceType,
                                 query
+                        ),
+                        new SortRequest(
+                                sortBy,
+                                sortDirection
                         ),
                         page,
                         size
