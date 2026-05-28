@@ -2,10 +2,9 @@ package com.complipilot.backend.task.controller;
 
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
-import com.complipilot.backend.task.dto.ComplianceTaskResponse;
-import com.complipilot.backend.task.dto.ComplianceTaskSummaryResponse;
-import com.complipilot.backend.task.dto.CreateComplianceTaskRequest;
-import com.complipilot.backend.task.dto.UpdateComplianceTaskRequest;
+import com.complipilot.backend.task.dto.*;
+import com.complipilot.backend.task.enums.ComplianceTaskPriority;
+import com.complipilot.backend.task.enums.ComplianceTaskStatus;
 import com.complipilot.backend.task.service.ComplianceTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -56,6 +55,10 @@ public class ComplianceTaskController {
     public ResponseEntity<PageResponse<ComplianceTaskResponse>> listTasks(
             @PathVariable UUID organizationId,
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @RequestParam(required = false) ComplianceTaskStatus status,
+            @RequestParam(required = false) ComplianceTaskPriority priority,
+            @RequestParam(required = false) UUID assigneeUserId,
+            @RequestParam(required = false) UUID complianceItemId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -63,6 +66,12 @@ public class ComplianceTaskController {
                 complianceTaskService.listTasks(
                         organizationId,
                         authenticatedUser.id(),
+                        new ComplianceTaskFilterRequest(
+                                status,
+                                priority,
+                                assigneeUserId,
+                                complianceItemId
+                        ),
                         page,
                         size
                 )

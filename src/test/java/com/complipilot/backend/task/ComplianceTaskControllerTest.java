@@ -297,6 +297,52 @@ class ComplianceTaskControllerTest {
     }
 
     @Test
+    void shouldFilterComplianceTasksByStatusAndPriority() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-filter@example.com",
+                "Task Filter User",
+                "Task Filter Company"
+        );
+
+        String highTaskId = createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "High task",
+                "High priority task.",
+                "HIGH",
+                LocalDate.now().plusDays(1).toString()
+        );
+
+        createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "Low task",
+                "Low priority task.",
+                "LOW",
+                LocalDate.now().plusDays(2).toString()
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?status=OPEN&priority=HIGH&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.items[0].id", is(highTaskId)))
+                .andExpect(jsonPath("$.items[0].title", is("High task")))
+                .andExpect(jsonPath("$.items[0].status", is("OPEN")))
+                .andExpect(jsonPath("$.items[0].priority", is("HIGH")))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+    }
+
+
+
+    @Test
     void shouldPreventTaskAccessAcrossOrganizations() throws Exception {
         TestWorkspace ownerA = createWorkspaceWithAppliedFramework(
                 "task-owner-a@example.com",
@@ -336,6 +382,38 @@ class ComplianceTaskControllerTest {
                         )
                 )
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldFilterComplianceTasksByComplianceItemId() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "task-filter-item@example.com",
+                "Task Filter Item User",
+                "Task Filter Item Company"
+        );
+
+        String taskId = createTask(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                workspace.firstComplianceItemId(),
+                "Compliance item task",
+                "Task attached to compliance item.",
+                "MEDIUM",
+                LocalDate.now().plusDays(1).toString()
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/tasks?complianceItemId={complianceItemId}&page=0&size=20",
+                                workspace.organizationId(),
+                                workspace.firstComplianceItemId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.items[0].id", is(taskId)))
+                .andExpect(jsonPath("$.items[0].complianceItemId", is(workspace.firstComplianceItemId())))
+                .andExpect(jsonPath("$.totalItems", is(1)));
     }
 
     private TestWorkspace createWorkspaceWithAppliedFramework(

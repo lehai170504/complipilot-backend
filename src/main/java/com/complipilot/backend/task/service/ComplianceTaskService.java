@@ -12,10 +12,7 @@ import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.organization.service.TenantAccessService;
-import com.complipilot.backend.task.dto.ComplianceTaskResponse;
-import com.complipilot.backend.task.dto.ComplianceTaskSummaryResponse;
-import com.complipilot.backend.task.dto.CreateComplianceTaskRequest;
-import com.complipilot.backend.task.dto.UpdateComplianceTaskRequest;
+import com.complipilot.backend.task.dto.*;
 import com.complipilot.backend.task.entity.ComplianceTask;
 import com.complipilot.backend.task.enums.ComplianceTaskStatus;
 import com.complipilot.backend.task.repository.ComplianceTaskRepository;
@@ -122,6 +119,7 @@ public class ComplianceTaskService {
     public PageResponse<ComplianceTaskResponse> listTasks(
             UUID organizationId,
             UUID currentUserId,
+            ComplianceTaskFilterRequest filter,
             int page,
             int size
     ) {
@@ -132,8 +130,12 @@ public class ComplianceTaskService {
 
         return PageResponse.from(
                 complianceTaskRepository
-                        .findByOrganization_Id(
+                        .findByOrganizationIdWithFilters(
                                 organizationId,
+                                filter.status(),
+                                filter.priority(),
+                                filter.assigneeUserId(),
+                                filter.complianceItemId(),
                                 PageRequest.of(
                                         safePage,
                                         safeSize,
