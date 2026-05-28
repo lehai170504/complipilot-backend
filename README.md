@@ -59,6 +59,9 @@ Paginated audit events
 Compliance tasks
 Paginated compliance tasks
 Paginated evidence documents
+Task list filters
+Evidence list filters
+Audit event filters
 Request ID / correlation logging
 CORS hardening
 Auth endpoint rate limiting
@@ -612,6 +615,33 @@ max size = 100
 items are sorted by createdAt DESC
 ```
 
+Supported filters:
+
+```txt
+GET /tasks:
+  status
+  priority
+  assigneeUserId
+  complianceItemId
+
+GET /evidence:
+  evidenceType
+  sourceType
+
+GET /audit-events:
+  action
+  resourceType
+```
+
+Examples:
+
+```http
+GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&priority=HIGH&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?complianceItemId={itemId}&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?evidenceType=POLICY&sourceType=FILE&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20
+```
+
 These endpoints still return arrays:
 
 ```http
@@ -1135,6 +1165,21 @@ DELETE /api/v1/organizations/{organizationId}/compliance-items/{itemId}/evidence
 }
 ```
 
+Optional filters:
+
+```txt
+evidenceType
+sourceType
+```
+
+Examples:
+
+```http
+GET /api/v1/organizations/{organizationId}/evidence?evidenceType=POLICY&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?sourceType=URL&page=0&size=20
+GET /api/v1/organizations/{organizationId}/evidence?evidenceType=PROCEDURE&sourceType=URL&page=0&size=20
+```
+
 Evidence source types:
 
 ```txt
@@ -1189,6 +1234,25 @@ DELETE /api/v1/organizations/{organizationId}/tasks/{taskId}
 }
 ```
 
+Optional filters:
+
+```txt
+status
+priority
+assigneeUserId
+complianceItemId
+```
+
+Examples:
+
+```http
+GET /api/v1/organizations/{organizationId}/tasks?status=OPEN&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?priority=CRITICAL&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?status=IN_PROGRESS&priority=HIGH&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?complianceItemId={itemId}&page=0&size=20
+GET /api/v1/organizations/{organizationId}/tasks?assigneeUserId={userId}&page=0&size=20
+```
+
 Task statuses:
 
 ```txt
@@ -1225,6 +1289,21 @@ Returns `PageResponse<AuditEvent>`:
   "totalItems": 0,
   "totalPages": 0
 }
+```
+
+Optional filters:
+
+```txt
+action
+resourceType
+```
+
+Examples:
+
+```http
+GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?resourceType=EVIDENCE_DOCUMENT&page=0&size=20
+GET /api/v1/organizations/{organizationId}/audit-events?action=EVIDENCE_DOCUMENT_CREATED&resourceType=EVIDENCE_DOCUMENT&page=0&size=20
 ```
 
 Tracked events include:
@@ -1590,7 +1669,7 @@ Before real deployment:
 The latest frontend API contract file generated during development:
 
 ```txt
-complipilot-fe-api-contract-v0.6.md
+complipilot-fe-api-contract-v0.7.md
 ```
 
 Frontend local Maven backend:
@@ -1619,6 +1698,24 @@ These return:
 PageResponse<T>
 ```
 
+New in v0.7:
+
+```txt
+/tasks supports:
+  status
+  priority
+  assigneeUserId
+  complianceItemId
+
+/evidence supports:
+  evidenceType
+  sourceType
+
+/audit-events supports:
+  action
+  resourceType
+```
+
 ---
 
 ## Current Development Status
@@ -1642,6 +1739,9 @@ Paginated audit events
 Compliance tasks
 Paginated compliance tasks
 Paginated evidence documents
+Task list filters
+Evidence list filters
+Audit event filters
 Request ID / observability
 CORS hardening
 Auth endpoint rate limiting
@@ -1661,5 +1761,6 @@ Advanced role management
 Email invitations
 Evidence OCR/AI extraction
 Compliance report export
-API filters/search for tasks/evidence/audit
+Keyword search for tasks/evidence/audit
+Deployment setup
 ```
