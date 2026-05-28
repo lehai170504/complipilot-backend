@@ -1,5 +1,7 @@
 package com.complipilot.backend.identity.controller;
 
+import com.complipilot.backend.auth.dto.LogoutRequest;
+import com.complipilot.backend.auth.dto.RefreshTokenRequest;
 import com.complipilot.backend.identity.dto.login.LoginRequest;
 import com.complipilot.backend.identity.dto.login.LoginResponse;
 import com.complipilot.backend.identity.dto.register.RegisterRequest;
@@ -49,4 +51,20 @@ public class AuthController {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/api/v1/auth/refresh")
+    public ResponseEntity<LoginResponse> refresh(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/api/v1/auth/logout")
+    public ResponseEntity<Void> logout(
+            @Valid @RequestBody LogoutRequest request
+    ) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
 }

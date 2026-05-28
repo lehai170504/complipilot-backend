@@ -1,5 +1,7 @@
 package com.complipilot.backend.identity.service;
 
+import com.complipilot.backend.auth.dto.LogoutRequest;
+import com.complipilot.backend.auth.dto.RefreshTokenRequest;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.UnauthorizedException;
 import com.complipilot.backend.common.security.JwtService;
@@ -16,6 +18,7 @@ import com.complipilot.backend.organization.entity.OrganizationMember;
 import com.complipilot.backend.organization.repository.OrganizationMemberRepository;
 import com.complipilot.backend.organization.enums.OrganizationMemberRole;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
+import com.complipilot.backend.common.security.refresh.RefreshTokenService;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,19 +32,22 @@ public class AuthService {
     private final OrganizationMemberRepository organizationMemberRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(
             UserRepository userRepository,
             OrganizationRepository organizationRepository,
             OrganizationMemberRepository organizationMemberRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService
+            JwtService jwtService,
+            RefreshTokenService refreshTokenService
     ) {
         this.userRepository = userRepository;
         this.organizationRepository = organizationRepository;
         this.organizationMemberRepository = organizationMemberRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -106,9 +112,11 @@ public class AuthService {
         }
 
         String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
 
         return new LoginResponse(
                 accessToken,
+                refreshToken,
                 "Bearer",
                 jwtService.getAccessTokenExpirationSeconds(),
                 new AuthUserResponse(
@@ -117,6 +125,33 @@ public class AuthService {
                         user.getFullName()
                 )
         );
+    }
+
+    @Transactional
+    public LoginResponse refresh(RefreshTokenRequest request) {
+        User user = refreshTokenService.validateAndGetUser(request.refreshToken());
+
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user);
+
+        refreshTokenService.revoke(request.refreshToken());
+
+        return new LoginResponse(
+                accessToken,
+                refreshToken,
+                "Bearer",
+                jwtService.getAccessTokenExpirationSeconds(),
+                new AuthUserResponse(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getFullName()
+                )
+        );
+    }
+
+    @Transactional
+    public void logout(LogoutRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
     }
 
     private String generateUniqueSlug(String baseSlug) {

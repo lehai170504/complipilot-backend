@@ -56,6 +56,7 @@ app:
     secret: "${JWT_SECRET:local-dev-secret-key-change-this-in-production-please-123456}"
     issuer: "${JWT_ISSUER:complipilot-backend}"
     access-token-expiration-seconds: "${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}"
+    refresh-token-expiration-seconds: "${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:2592000}"
 
   storage:
     endpoint: "${MINIO_ENDPOINT:http://localhost:9000}"
