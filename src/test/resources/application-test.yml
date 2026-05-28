@@ -11,3 +11,7 @@ spring:
 
   flyway:
     enabled: false
+
+app:
+  rate-limit:
+    enabled: false

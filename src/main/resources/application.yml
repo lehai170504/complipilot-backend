@@ -65,6 +65,11 @@ app:
     public-endpoint: "${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}"
     presigned-url-expiration-minutes: "${MINIO_PRESIGNED_URL_EXPIRATION_MINUTES:15}"
 
+  rate-limit:
+    enabled: "${RATE_LIMIT_ENABLED:true}"
+    auth-capacity: "${RATE_LIMIT_AUTH_CAPACITY:20}"
+    auth-window-seconds: "${RATE_LIMIT_AUTH_WINDOW_SECONDS:60}"
+
 info:
   app:
     name: CompliPilot Backend
