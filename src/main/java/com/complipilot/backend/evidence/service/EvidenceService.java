@@ -11,11 +11,7 @@ import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
-import com.complipilot.backend.evidence.dto.ComplianceItemEvidenceResponse;
-import com.complipilot.backend.evidence.dto.CreateEvidenceDocumentRequest;
-import com.complipilot.backend.evidence.dto.EvidenceDocumentResponse;
-import com.complipilot.backend.evidence.dto.LinkEvidenceRequest;
-import com.complipilot.backend.evidence.dto.UpdateEvidenceDocumentRequest;
+import com.complipilot.backend.evidence.dto.*;
 import com.complipilot.backend.evidence.entity.ComplianceItemEvidenceLink;
 import com.complipilot.backend.evidence.entity.EvidenceDocument;
 import com.complipilot.backend.evidence.enums.EvidenceSourceType;
@@ -29,9 +25,6 @@ import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.organization.service.TenantAccessService;
 import com.complipilot.backend.common.storage.StorageProperties;
 import com.complipilot.backend.common.storage.StorageService;
-import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlRequest;
-import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlResponse;
-import com.complipilot.backend.evidence.dto.EvidenceDownloadUrlResponse;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -127,6 +120,7 @@ public class EvidenceService {
     public PageResponse<EvidenceDocumentResponse> listEvidenceDocuments(
             UUID organizationId,
             UUID currentUserId,
+            EvidenceFilterRequest filter,
             int page,
             int size
     ) {
@@ -137,9 +131,11 @@ public class EvidenceService {
 
         return PageResponse.from(
                 evidenceDocumentRepository
-                        .findByOrganization_IdAndStatusNot(
+                        .findByOrganizationIdWithFilters(
                                 organizationId,
                                 EvidenceStatus.ARCHIVED,
+                                filter.evidenceType(),
+                                filter.sourceType(),
                                 PageRequest.of(
                                         safePage,
                                         safeSize,

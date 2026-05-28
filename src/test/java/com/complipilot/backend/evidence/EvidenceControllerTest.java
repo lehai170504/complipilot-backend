@@ -159,6 +159,43 @@ class EvidenceControllerTest {
     }
 
     @Test
+    void shouldFilterEvidenceDocumentsByEvidenceTypeAndSourceType() throws Exception {
+        TestWorkspace workspace = createWorkspaceWithAppliedFramework(
+                "evidence-filter@example.com",
+                "Evidence Filter User",
+                "Evidence Filter Company"
+        );
+
+        String procedureEvidenceId = createUrlEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "Procedure evidence",
+                "https://example.com/procedure-evidence"
+        );
+
+        createFileEvidence(
+                workspace.accessToken(),
+                workspace.organizationId(),
+                "Policy file evidence",
+                "organizations/%s/evidence/policy-file.pdf".formatted(workspace.organizationId())
+        );
+
+        mockMvc.perform(
+                        get("/api/v1/organizations/{organizationId}/evidence?evidenceType=PROCEDURE&sourceType=URL&page=0&size=20",
+                                workspace.organizationId()
+                        )
+                                .header("Authorization", "Bearer " + workspace.accessToken())
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()", is(1)))
+                .andExpect(jsonPath("$.items[0].id", is(procedureEvidenceId)))
+                .andExpect(jsonPath("$.items[0].evidenceType", is("PROCEDURE")))
+                .andExpect(jsonPath("$.items[0].sourceType", is("URL")))
+                .andExpect(jsonPath("$.totalItems", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+    }
+
+    @Test
     void shouldLinkListAndUnlinkEvidenceFromComplianceItem() throws Exception {
         TestWorkspace workspace = createWorkspaceWithAppliedFramework(
                 "evidence-link@example.com",
@@ -567,6 +604,42 @@ class EvidenceControllerTest {
                 .asText();
 
         return new AuthSession(accessToken, organizationId);
+    }
+
+    private String createFileEvidence(
+            String accessToken,
+            String organizationId,
+            String title,
+            String objectKey
+    ) throws Exception {
+        String body = """
+            {
+              "title": "%s",
+              "description": "File evidence created during integration test.",
+              "evidenceType": "POLICY",
+              "sourceType": "FILE",
+              "fileObjectKey": "%s",
+              "externalUrl": null,
+              "contentType": "application/pdf",
+              "fileSizeBytes": 12345
+            }
+            """.formatted(title, objectKey);
+
+        String response = mockMvc.perform(
+                        post("/api/v1/organizations/{organizationId}/evidence", organizationId)
+                                .header("Authorization", "Bearer " + accessToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body)
+                )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response)
+                .path("id")
+                .asText();
     }
 
     private String createUrlEvidence(

@@ -5,15 +5,10 @@ import java.util.UUID;
 
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
-import com.complipilot.backend.evidence.dto.ComplianceItemEvidenceResponse;
-import com.complipilot.backend.evidence.dto.CreateEvidenceDocumentRequest;
-import com.complipilot.backend.evidence.dto.EvidenceDocumentResponse;
-import com.complipilot.backend.evidence.dto.LinkEvidenceRequest;
-import com.complipilot.backend.evidence.dto.UpdateEvidenceDocumentRequest;
-import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlRequest;
-import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlResponse;
-import com.complipilot.backend.evidence.dto.EvidenceDownloadUrlResponse;
+import com.complipilot.backend.evidence.dto.*;
 
+import com.complipilot.backend.evidence.enums.EvidenceSourceType;
+import com.complipilot.backend.evidence.enums.EvidenceType;
 import com.complipilot.backend.evidence.service.EvidenceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -63,6 +58,8 @@ public class EvidenceController {
     public ResponseEntity<PageResponse<EvidenceDocumentResponse>> listEvidenceDocuments(
             @PathVariable UUID organizationId,
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @RequestParam(required = false) EvidenceType evidenceType,
+            @RequestParam(required = false) EvidenceSourceType sourceType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
@@ -70,6 +67,10 @@ public class EvidenceController {
                 evidenceService.listEvidenceDocuments(
                         organizationId,
                         authenticatedUser.id(),
+                        new EvidenceFilterRequest(
+                                evidenceType,
+                                sourceType
+                        ),
                         page,
                         size
                 )
