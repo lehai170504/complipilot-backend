@@ -23,7 +23,7 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: "${API_PORT:8080}"
+  port: "${API_PORT:8081}"
   shutdown: graceful
 
 
