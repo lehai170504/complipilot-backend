@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.complipilot.backend.evidence.entity.ComplianceItemEvidenceLink;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ComplianceItemEvidenceLinkRepository extends JpaRepository<ComplianceItemEvidenceLink, UUID> {
@@ -13,6 +14,16 @@ public interface ComplianceItemEvidenceLinkRepository extends JpaRepository<Comp
 
     Optional<ComplianceItemEvidenceLink> findByComplianceItem_IdAndEvidenceDocument_Id(
             UUID complianceItemId,
+            UUID evidenceDocumentId
+    );
+
+    @EntityGraph(attributePaths = {
+            "complianceItem",
+            "complianceItem.requirement",
+            "evidenceDocument"
+    })
+    Optional<ComplianceItemEvidenceLink> findFirstByComplianceItem_Organization_IdAndEvidenceDocument_Id(
+            UUID organizationId,
             UUID evidenceDocumentId
     );
 
