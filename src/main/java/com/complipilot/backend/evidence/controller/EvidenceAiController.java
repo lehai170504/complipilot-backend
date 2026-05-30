@@ -2,21 +2,14 @@ package com.complipilot.backend.evidence.controller;
 
 import java.util.UUID;
 
-import com.complipilot.backend.ai.dto.EvidenceAiAnalysisRequest;
-import com.complipilot.backend.ai.dto.EvidenceAiAnalysisResponse;
-import com.complipilot.backend.ai.service.AiEvidenceAnalysisClient;
-import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.security.AuthenticatedUser;
-import com.complipilot.backend.evidence.entity.ComplianceItemEvidenceLink;
-import com.complipilot.backend.evidence.entity.EvidenceDocument;
-import com.complipilot.backend.evidence.repository.ComplianceItemEvidenceLinkRepository;
-import com.complipilot.backend.evidence.repository.EvidenceDocumentRepository;
-import com.complipilot.backend.organization.service.TenantAccessService;
+import com.complipilot.backend.evidence.dto.EvidenceAiAnalysisRecordResponse;
+import com.complipilot.backend.evidence.service.EvidenceAiAnalysisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,80 +18,47 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class EvidenceAiController {
 
-    private final EvidenceDocumentRepository evidenceDocumentRepository;
-    private final ComplianceItemEvidenceLinkRepository evidenceLinkRepository;
-    private final TenantAccessService tenantAccessService;
-    private final AiEvidenceAnalysisClient aiEvidenceAnalysisClient;
+    private final EvidenceAiAnalysisService evidenceAiAnalysisService;
 
     public EvidenceAiController(
-            EvidenceDocumentRepository evidenceDocumentRepository,
-            ComplianceItemEvidenceLinkRepository evidenceLinkRepository,
-            TenantAccessService tenantAccessService,
-            AiEvidenceAnalysisClient aiEvidenceAnalysisClient
+            EvidenceAiAnalysisService evidenceAiAnalysisService
     ) {
-        this.evidenceDocumentRepository = evidenceDocumentRepository;
-        this.evidenceLinkRepository = evidenceLinkRepository;
-        this.tenantAccessService = tenantAccessService;
-        this.aiEvidenceAnalysisClient = aiEvidenceAnalysisClient;
+        this.evidenceAiAnalysisService = evidenceAiAnalysisService;
     }
 
     @Operation(
             summary = "Analyze evidence with AI",
-            description = "Runs AI analysis for an evidence document through the internal AI service.",
+            description = "Runs AI analysis for an evidence document, saves the result, and returns the saved analysis.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
-    @Transactional(readOnly = true)
     @PostMapping("/api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analyze")
-    public EvidenceAiAnalysisResponse analyzeEvidence(
+    public EvidenceAiAnalysisRecordResponse analyzeEvidence(
             @PathVariable UUID organizationId,
             @PathVariable UUID evidenceId,
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser
     ) {
-        tenantAccessService.requireActiveMember(
+        return evidenceAiAnalysisService.analyzeAndSave(
                 organizationId,
+                evidenceId,
                 authenticatedUser.id()
         );
+    }
 
-        EvidenceDocument evidence = evidenceDocumentRepository
-                .findByIdAndOrganization_Id(evidenceId, organizationId)
-                .orElseThrow(() -> new NotFoundException("Evidence document not found"));
-
-        ComplianceItemEvidenceLink evidenceLink = evidenceLinkRepository
-                .findFirstByComplianceItem_Organization_IdAndEvidenceDocument_Id(
-                        organizationId,
-                        evidenceId
-                )
-                .orElse(null);
-
-        String linkedRequirementCode = null;
-        String linkedRequirementTitle = null;
-
-        if (evidenceLink != null) {
-            linkedRequirementCode = evidenceLink
-                    .getComplianceItem()
-                    .getRequirement()
-                    .getCode();
-
-            linkedRequirementTitle = evidenceLink
-                    .getComplianceItem()
-                    .getRequirement()
-                    .getTitle();
-        }
-
-        EvidenceAiAnalysisRequest request = new EvidenceAiAnalysisRequest(
+    @Operation(
+            summary = "Get latest evidence AI analysis",
+            description = "Returns the latest saved AI analysis for an evidence document.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analysis/latest")
+    public EvidenceAiAnalysisRecordResponse getLatestAnalysis(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID evidenceId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return evidenceAiAnalysisService.getLatestAnalysis(
                 organizationId,
-                evidence.getId(),
-                evidence.getTitle(),
-                evidence.getDescription(),
-                evidence.getEvidenceType().name(),
-                evidence.getSourceType().name(),
-                evidence.getContentType(),
-                evidence.getFileSizeBytes(),
-                evidence.getExternalUrl(),
-                linkedRequirementCode,
-                linkedRequirementTitle
+                evidenceId,
+                authenticatedUser.id()
         );
-
-        return aiEvidenceAnalysisClient.analyzeEvidence(request);
     }
 }
