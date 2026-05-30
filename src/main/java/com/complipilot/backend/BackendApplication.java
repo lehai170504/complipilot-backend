@@ -1,5 +1,6 @@
 package com.complipilot.backend;
 
+import com.complipilot.backend.ai.config.AiProperties;
 import com.complipilot.backend.common.ratelimit.RateLimitProperties;
 import com.complipilot.backend.common.storage.StorageProperties;
 
@@ -12,7 +13,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableConfigurationProperties({
 		StorageProperties.class,
-		RateLimitProperties.class
+		RateLimitProperties.class,
+		AiProperties.class
 })
 public class BackendApplication {
 
