@@ -129,6 +129,18 @@ public class OrganizationMember {
         return updatedAt;
     }
 
+
+    public void changeRole(OrganizationMemberRole role) {
+        this.role = role;
+    }
+
+    public void changeStatus(OrganizationMemberStatus status) {
+        this.status = status;
+        if (status == OrganizationMemberStatus.ACTIVE && this.joinedAt == null) {
+            this.joinedAt = Instant.now();
+        }
+    }
+
     public boolean isActive() {
         return this.status == OrganizationMemberStatus.ACTIVE;
     }

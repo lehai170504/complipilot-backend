@@ -1,13 +1,17 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:complipilot-local;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: jdbc:postgresql://localhost:5433/complipilot
+    username: complipilot
+    password: 123456
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
 
   flyway:
-    enabled: false
+    enabled: true
+
+app:
+  demo-users:
+    enabled: true

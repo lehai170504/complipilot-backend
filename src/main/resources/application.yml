@@ -73,6 +73,9 @@ app:
     auth-capacity: "${RATE_LIMIT_AUTH_CAPACITY:20}"
     auth-window-seconds: "${RATE_LIMIT_AUTH_WINDOW_SECONDS:60}"
 
+  demo-users:
+    enabled: "${APP_DEMO_USERS_ENABLED:false}"
+
 info:
   app:
     name: CompliPilot Backend

@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.complipilot.backend.identity.entity.User;
 
 import com.complipilot.backend.organization.entity.OrganizationMember;
+import com.complipilot.backend.organization.enums.OrganizationMemberRole;
 import com.complipilot.backend.organization.enums.OrganizationMemberStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -34,6 +35,14 @@ public interface OrganizationMemberRepository extends JpaRepository<Organization
     boolean existsByOrganization_IdAndUser_IdAndStatus(
             UUID organizationId,
             UUID userId,
+            OrganizationMemberStatus status
+    );
+
+    List<OrganizationMember> findByOrganization_Id(UUID organizationId);
+
+    long countByOrganization_IdAndRoleAndStatus(
+            UUID organizationId,
+            OrganizationMemberRole role,
             OrganizationMemberStatus status
     );
 }
