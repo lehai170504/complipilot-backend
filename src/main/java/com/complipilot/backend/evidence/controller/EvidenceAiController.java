@@ -1,5 +1,6 @@
 package com.complipilot.backend.evidence.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
@@ -61,4 +62,23 @@ public class EvidenceAiController {
                 authenticatedUser.id()
         );
     }
+
+    @Operation(
+            summary = "List evidence AI analysis history",
+            description = "Returns the latest saved AI analysis records for an evidence document.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analyses")
+    public List<EvidenceAiAnalysisRecordResponse> listAnalysisHistory(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID evidenceId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return evidenceAiAnalysisService.listAnalysisHistory(
+                organizationId,
+                evidenceId,
+                authenticatedUser.id()
+        );
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.complipilot.backend.evidence.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import com.complipilot.backend.ai.dto.EvidenceAiAnalysisRequest;
@@ -135,6 +136,24 @@ public class EvidenceAiAnalysisService {
                 .orElseThrow(() -> new NotFoundException("Evidence AI analysis not found"));
 
         return toResponse(latestAnalysis);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EvidenceAiAnalysisRecordResponse> listAnalysisHistory(
+            UUID organizationId,
+            UUID evidenceId,
+            UUID userId
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, userId);
+
+        return evidenceAiAnalysisRepository
+                .findTop10ByOrganization_IdAndEvidenceDocument_IdOrderByAnalyzedAtDesc(
+                        organizationId,
+                        evidenceId
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private EvidenceAiAnalysisRecordResponse toResponse(

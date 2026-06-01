@@ -1,5 +1,6 @@
 package com.complipilot.backend.evidence.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -9,6 +10,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface EvidenceAiAnalysisRepository extends JpaRepository<EvidenceAiAnalysis, UUID> {
 
     Optional<EvidenceAiAnalysis> findTopByOrganization_IdAndEvidenceDocument_IdOrderByAnalyzedAtDesc(
+            UUID organizationId,
+            UUID evidenceDocumentId
+    );
+
+    List<EvidenceAiAnalysis> findTop10ByOrganization_IdAndEvidenceDocument_IdOrderByAnalyzedAtDesc(
             UUID organizationId,
             UUID evidenceDocumentId
     );
