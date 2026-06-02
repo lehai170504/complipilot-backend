@@ -108,13 +108,10 @@ public class SecurityConfig {
                 "DELETE",
                 "OPTIONS"
         ));
-        configuration.setAllowedHeaders(List.of(
-                HttpHeaders.AUTHORIZATION,
-                HttpHeaders.CONTENT_TYPE,
-                "X-Request-Id"
-        ));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of(
-                "X-Request-Id"
+                "X-Request-Id",
+                HttpHeaders.AUTHORIZATION
         ));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
