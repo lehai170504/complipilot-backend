@@ -11,8 +11,15 @@ import io.minio.MinioClient;
 import io.minio.http.Method;
 
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Service
+@ConditionalOnProperty(
+        prefix = "app.storage",
+        name = "provider",
+        havingValue = "minio",
+        matchIfMissing = true
+)
 public class StorageService {
 
     private final MinioClient minioClient;

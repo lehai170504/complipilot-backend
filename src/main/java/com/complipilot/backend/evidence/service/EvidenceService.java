@@ -33,9 +33,10 @@ import com.complipilot.backend.common.storage.StorageProperties;
 import com.complipilot.backend.common.storage.StorageService;
 
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.complipilot.backend.common.storage.EvidenceObjectKeyService;
+import org.springframework.beans.factory.ObjectProvider;
 
 @Service
 public class EvidenceService {
@@ -46,7 +47,8 @@ public class EvidenceService {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
     private final TenantAccessService tenantAccessService;
-    private final StorageService storageService;
+    private final ObjectProvider<StorageService> storageServiceProvider;
+    private final EvidenceObjectKeyService evidenceObjectKeyService;
     private final StorageProperties storageProperties;
     private final AuditService auditService;
     private final SupabaseStorageClient supabaseStorageClient;
@@ -58,7 +60,8 @@ public class EvidenceService {
             OrganizationRepository organizationRepository,
             UserRepository userRepository,
             TenantAccessService tenantAccessService,
-            StorageService storageService,
+            ObjectProvider<StorageService> storageServiceProvider,
+            EvidenceObjectKeyService evidenceObjectKeyService,
             StorageProperties storageProperties,
             SupabaseStorageClient supabaseStorageClient,
             AuditService auditService
@@ -69,7 +72,8 @@ public class EvidenceService {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.tenantAccessService = tenantAccessService;
-        this.storageService = storageService;
+        this.storageServiceProvider = storageServiceProvider;
+        this.evidenceObjectKeyService = evidenceObjectKeyService;
         this.storageProperties = storageProperties;
         this.supabaseStorageClient = supabaseStorageClient;
         this.auditService = auditService;
@@ -361,7 +365,7 @@ public class EvidenceService {
     ) {
         tenantAccessService.requireManagerRole(organizationId, currentUserId);
 
-        String objectKey = storageService.generateEvidenceObjectKey(
+        String objectKey = evidenceObjectKeyService.generateEvidenceObjectKey(
                 organizationId,
                 request.filename()
         );
@@ -376,6 +380,12 @@ public class EvidenceService {
                     "PUT",
                     secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds())
             );
+        }
+
+        StorageService storageService = storageServiceProvider.getIfAvailable();
+
+        if (storageService == null) {
+            throw new ConflictException("MinIO storage service is not available");
         }
 
         String uploadUrl = storageService.createPresignedUploadUrl(
@@ -422,6 +432,12 @@ public class EvidenceService {
                     "GET",
                     secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds())
             );
+        }
+
+        StorageService storageService = storageServiceProvider.getIfAvailable();
+
+        if (storageService == null) {
+            throw new ConflictException("MinIO storage service is not available");
         }
 
         String downloadUrl = storageService.createPresignedDownloadUrl(
