@@ -1,7 +1,9 @@
 package com.complipilot.backend.common.storage.supabase;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 public record SupabaseSignedDownloadResponse(
-        String signedURL,
+        @JsonAlias({"signedUrl", "signedURL", "url"})
         String signedUrl
 ) {
     public String url() {
@@ -9,6 +11,6 @@ public record SupabaseSignedDownloadResponse(
             return signedUrl;
         }
 
-        return signedURL;
+        throw new IllegalStateException("Supabase signed download URL response does not contain signedUrl/url");
     }
 }

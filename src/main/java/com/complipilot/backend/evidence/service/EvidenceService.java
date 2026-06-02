@@ -372,7 +372,7 @@ public class EvidenceService {
 
             return new CreateEvidenceUploadUrlResponse(
                     objectKey,
-                    response.signedUrl(),
+                    response.uploadUrl(),
                     "PUT",
                     secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds())
             );

@@ -1,10 +1,15 @@
 package com.complipilot.backend.common.storage.supabase;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.complipilot.backend.common.storage.StorageProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,15 +33,13 @@ public class SupabaseStorageClient {
                 .build();
     }
 
-    public SupabaseSignedUploadResponse createSignedUploadUrl(
-            String objectKey
-    ) {
+    public SupabaseSignedUploadResponse createSignedUploadUrl(String objectKey) {
         try {
             String url = normalizeUrl(storageProperties.supabase().url())
                     + "/storage/v1/object/upload/sign/"
-                    + storageProperties.supabase().bucket()
+                    + encodePathSegment(storageProperties.supabase().bucket())
                     + "/"
-                    + objectKey;
+                    + encodeObjectKey(objectKey);
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -70,18 +73,17 @@ public class SupabaseStorageClient {
         }
     }
 
-    public SupabaseSignedDownloadResponse createSignedDownloadUrl(
-            String objectKey
-    ) {
+    public SupabaseSignedDownloadResponse createSignedDownloadUrl(String objectKey) {
         try {
             String url = normalizeUrl(storageProperties.supabase().url())
                     + "/storage/v1/object/sign/"
-                    + storageProperties.supabase().bucket()
+                    + encodePathSegment(storageProperties.supabase().bucket())
                     + "/"
-                    + objectKey;
+                    + encodeObjectKey(objectKey);
 
             String requestBody = objectMapper.writeValueAsString(
-                    new SignedDownloadRequest(
+                    Map.of(
+                            "expiresIn",
                             storageProperties.supabase().signedUrlExpirationSeconds()
                     )
             );
@@ -126,8 +128,14 @@ public class SupabaseStorageClient {
         return value;
     }
 
-    private record SignedDownloadRequest(
-            int expiresIn
-    ) {
+    private String encodeObjectKey(String objectKey) {
+        return Arrays.stream(objectKey.split("/"))
+                .map(this::encodePathSegment)
+                .collect(Collectors.joining("/"));
+    }
+
+    private String encodePathSegment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8)
+                .replace("+", "%20");
     }
 }
