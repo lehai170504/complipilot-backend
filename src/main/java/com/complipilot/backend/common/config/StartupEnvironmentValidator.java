@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 public class StartupEnvironmentValidator implements ApplicationRunner {
 
     private static final String PROD_PROFILE = "prod";
+    private static final String STORAGE_PROVIDER_SUPABASE = "supabase";
+    private static final String STORAGE_PROVIDER_MINIO = "minio";
 
     private final Environment environment;
 
@@ -34,12 +36,9 @@ public class StartupEnvironmentValidator implements ApplicationRunner {
         require("JWT_SECRET");
         require("JWT_ISSUER");
 
-        require("MINIO_ENDPOINT");
-        require("MINIO_PUBLIC_ENDPOINT");
-        require("MINIO_ACCESS_KEY");
-        require("MINIO_SECRET_KEY");
-        require("MINIO_BUCKET_EVIDENCE");
+        require("AI_SERVICE_BASE_URL");
 
+        validateStorageProvider();
         validateJwtSecret();
         validateCorsOrigins();
     }
@@ -47,6 +46,34 @@ public class StartupEnvironmentValidator implements ApplicationRunner {
     private boolean isProdProfileActive() {
         return Arrays.asList(environment.getActiveProfiles())
                 .contains(PROD_PROFILE);
+    }
+
+    private void validateStorageProvider() {
+        String storageProvider = environment.getProperty(
+                "STORAGE_PROVIDER",
+                environment.getProperty("app.storage.provider", STORAGE_PROVIDER_MINIO)
+        );
+
+        if (STORAGE_PROVIDER_SUPABASE.equalsIgnoreCase(storageProvider)) {
+            require("SUPABASE_URL");
+            require("SUPABASE_SERVICE_ROLE_KEY");
+            require("SUPABASE_STORAGE_BUCKET");
+            return;
+        }
+
+        if (STORAGE_PROVIDER_MINIO.equalsIgnoreCase(storageProvider)) {
+            require("MINIO_ENDPOINT");
+            require("MINIO_PUBLIC_ENDPOINT");
+            require("MINIO_ACCESS_KEY");
+            require("MINIO_SECRET_KEY");
+            require("MINIO_BUCKET_EVIDENCE");
+            return;
+        }
+
+        throw new StartupValidationException(
+                "Unsupported STORAGE_PROVIDER in production: " + storageProvider
+                        + ". Supported values: minio, supabase"
+        );
     }
 
     private void require(String propertyName) {
@@ -71,7 +98,8 @@ public class StartupEnvironmentValidator implements ApplicationRunner {
         List<String> unsafeSecrets = List.of(
                 "local-dev-secret-key-change-this-in-production-please-123456",
                 "local-prod-test-secret-key-change-this-please-1234567890",
-                "change_this_to_a_very_long_random_secret_at_least_64_chars"
+                "change_this_to_a_very_long_random_secret_at_least_64_chars",
+                "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET_AT_LEAST_64_CHARS"
         );
 
         if (unsafeSecrets.contains(jwtSecret)) {
@@ -93,6 +121,12 @@ public class StartupEnvironmentValidator implements ApplicationRunner {
         if (corsOrigins.contains("*")) {
             throw new StartupValidationException(
                     "APP_CORS_ALLOWED_ORIGINS must not contain '*' in production"
+            );
+        }
+
+        if (corsOrigins.endsWith("/")) {
+            throw new StartupValidationException(
+                    "APP_CORS_ALLOWED_ORIGINS must not end with '/' in production"
             );
         }
     }
