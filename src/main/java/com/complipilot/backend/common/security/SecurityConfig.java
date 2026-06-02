@@ -113,7 +113,7 @@ public class SecurityConfig {
                 "X-Request-Id",
                 HttpHeaders.AUTHORIZATION
         ));
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
