@@ -12,6 +12,9 @@ import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.sorting.SortRequest;
 import com.complipilot.backend.common.sorting.SortUtils;
+import com.complipilot.backend.common.storage.supabase.SupabaseSignedDownloadResponse;
+import com.complipilot.backend.common.storage.supabase.SupabaseSignedUploadResponse;
+import com.complipilot.backend.common.storage.supabase.SupabaseStorageClient;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
 import com.complipilot.backend.evidence.dto.*;
@@ -46,6 +49,7 @@ public class EvidenceService {
     private final StorageService storageService;
     private final StorageProperties storageProperties;
     private final AuditService auditService;
+    private final SupabaseStorageClient supabaseStorageClient;
 
     public EvidenceService(
             EvidenceDocumentRepository evidenceDocumentRepository,
@@ -56,6 +60,7 @@ public class EvidenceService {
             TenantAccessService tenantAccessService,
             StorageService storageService,
             StorageProperties storageProperties,
+            SupabaseStorageClient supabaseStorageClient,
             AuditService auditService
     ) {
         this.evidenceDocumentRepository = evidenceDocumentRepository;
@@ -66,6 +71,7 @@ public class EvidenceService {
         this.tenantAccessService = tenantAccessService;
         this.storageService = storageService;
         this.storageProperties = storageProperties;
+        this.supabaseStorageClient = supabaseStorageClient;
         this.auditService = auditService;
     }
 
@@ -360,6 +366,18 @@ public class EvidenceService {
                 request.filename()
         );
 
+        if (storageProperties.isSupabase()) {
+            SupabaseSignedUploadResponse response =
+                    supabaseStorageClient.createSignedUploadUrl(objectKey);
+
+            return new CreateEvidenceUploadUrlResponse(
+                    objectKey,
+                    response.signedUrl(),
+                    "PUT",
+                    secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds())
+            );
+        }
+
         String uploadUrl = storageService.createPresignedUploadUrl(
                 objectKey,
                 request.contentType()
@@ -393,6 +411,19 @@ public class EvidenceService {
             throw new ConflictException("Only active evidence can be downloaded");
         }
 
+        if (storageProperties.isSupabase()) {
+            SupabaseSignedDownloadResponse response =
+                    supabaseStorageClient.createSignedDownloadUrl(
+                            evidenceDocument.getFileObjectKey()
+                    );
+
+            return new EvidenceDownloadUrlResponse(
+                    response.url(),
+                    "GET",
+                    secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds())
+            );
+        }
+
         String downloadUrl = storageService.createPresignedDownloadUrl(
                 evidenceDocument.getFileObjectKey()
         );
@@ -402,6 +433,10 @@ public class EvidenceService {
                 "GET",
                 storageProperties.presignedUrlExpirationMinutes()
         );
+    }
+
+    private int secondsToMinutes(int seconds) {
+        return Math.max(1, (int) Math.ceil(seconds / 60.0));
     }
 
     private void validateEvidenceSource(

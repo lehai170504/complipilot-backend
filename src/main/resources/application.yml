@@ -23,9 +23,8 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: "${API_PORT:8081}"
+  port: "${PORT:${API_PORT:8081}}"
   shutdown: graceful
-
 
 management:
   endpoints:
@@ -42,8 +41,10 @@ management:
 
 springdoc:
   api-docs:
+    enabled: "${SPRINGDOC_ENABLED:true}"
     path: /v3/api-docs
   swagger-ui:
+    enabled: "${SPRINGDOC_ENABLED:true}"
     path: /swagger-ui
     operations-sorter: method
     tags-sorter: alpha
@@ -61,12 +62,23 @@ app:
     revoked-refresh-token-retention-seconds: "${JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS:604800}"
 
   storage:
+    provider: "${STORAGE_PROVIDER:minio}"
+
     endpoint: "${MINIO_ENDPOINT:http://localhost:9000}"
     access-key: "${MINIO_ACCESS_KEY:complipilot}"
     secret-key: "${MINIO_SECRET_KEY:complipilot_minio_password}"
     bucket: "${MINIO_BUCKET_EVIDENCE:complipilot-evidence}"
     public-endpoint: "${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}"
     presigned-url-expiration-minutes: "${MINIO_PRESIGNED_URL_EXPIRATION_MINUTES:15}"
+
+    supabase:
+      url: "${SUPABASE_URL:}"
+      service-role-key: "${SUPABASE_SERVICE_ROLE_KEY:}"
+      bucket: "${SUPABASE_STORAGE_BUCKET:complipilot-evidence-prod}"
+      signed-url-expiration-seconds: "${SUPABASE_SIGNED_URL_EXPIRATION_SECONDS:900}"
+
+  ai:
+    base-url: "${AI_SERVICE_BASE_URL:http://localhost:8000}"
 
   rate-limit:
     enabled: "${RATE_LIMIT_ENABLED:true}"
@@ -80,4 +92,4 @@ info:
   app:
     name: CompliPilot Backend
     description: AI Compliance & Evidence OS backend API
-    version: 0.0.1-SNAPSHOT
+    version: "${APP_VERSION:0.0.1-SNAPSHOT}"

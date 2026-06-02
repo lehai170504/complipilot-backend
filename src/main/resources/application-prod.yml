@@ -20,7 +20,7 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: "${API_PORT:8080}"
+  port: "${PORT:${API_PORT:8080}}"
   shutdown: graceful
 
 management:
@@ -39,8 +39,12 @@ management:
 springdoc:
   api-docs:
     enabled: "${SPRINGDOC_ENABLED:false}"
+    path: /v3/api-docs
   swagger-ui:
     enabled: "${SPRINGDOC_ENABLED:false}"
+    path: /swagger-ui
+    operations-sorter: method
+    tags-sorter: alpha
 
 app:
   cors:
@@ -55,17 +59,31 @@ app:
     revoked-refresh-token-retention-seconds: "${JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS:604800}"
 
   storage:
-    endpoint: "${MINIO_ENDPOINT}"
-    access-key: "${MINIO_ACCESS_KEY}"
-    secret-key: "${MINIO_SECRET_KEY}"
-    bucket: "${MINIO_BUCKET_EVIDENCE}"
-    public-endpoint: "${MINIO_PUBLIC_ENDPOINT}"
+    provider: "${STORAGE_PROVIDER:supabase}"
+
+    endpoint: "${MINIO_ENDPOINT:}"
+    access-key: "${MINIO_ACCESS_KEY:}"
+    secret-key: "${MINIO_SECRET_KEY:}"
+    bucket: "${MINIO_BUCKET_EVIDENCE:}"
+    public-endpoint: "${MINIO_PUBLIC_ENDPOINT:}"
     presigned-url-expiration-minutes: "${MINIO_PRESIGNED_URL_EXPIRATION_MINUTES:15}"
+
+    supabase:
+      url: "${SUPABASE_URL}"
+      service-role-key: "${SUPABASE_SERVICE_ROLE_KEY}"
+      bucket: "${SUPABASE_STORAGE_BUCKET}"
+      signed-url-expiration-seconds: "${SUPABASE_SIGNED_URL_EXPIRATION_SECONDS:900}"
+
+  ai:
+    base-url: "${AI_SERVICE_BASE_URL}"
 
   rate-limit:
     enabled: "${RATE_LIMIT_ENABLED:true}"
     auth-capacity: "${RATE_LIMIT_AUTH_CAPACITY:10}"
     auth-window-seconds: "${RATE_LIMIT_AUTH_WINDOW_SECONDS:60}"
+
+  demo-users:
+    enabled: "${APP_DEMO_USERS_ENABLED:false}"
 
 info:
   app:

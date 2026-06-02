@@ -1,19 +1,52 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/complipilot
-    username: complipilot
-    password: 123456
+    url: "${DATABASE_URL:jdbc:postgresql://localhost:5433/complipilot}"
+    username: "${DATABASE_USERNAME:complipilot}"
+    password: "${DATABASE_PASSWORD:123456}"
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
 
   flyway:
     enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: "${PORT:${API_PORT:8081}}"
+
+springdoc:
+  api-docs:
+    enabled: "${SPRINGDOC_ENABLED:true}"
+  swagger-ui:
+    enabled: "${SPRINGDOC_ENABLED:true}"
 
 app:
-  demo-users:
-    enabled: true
+  cors:
+    allowed-origins: "${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}"
+
+  storage:
+    provider: "${STORAGE_PROVIDER:minio}"
+
+    endpoint: "${MINIO_ENDPOINT:http://localhost:9000}"
+    public-endpoint: "${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}"
+    access-key: "${MINIO_ACCESS_KEY:complipilot}"
+    secret-key: "${MINIO_SECRET_KEY:complipilot_minio_password}"
+    bucket: "${MINIO_BUCKET_EVIDENCE:complipilot-evidence}"
+    presigned-url-expiration-minutes: "${MINIO_PRESIGNED_URL_EXPIRATION_MINUTES:15}"
+
+    supabase:
+      url: "${SUPABASE_URL:}"
+      service-role-key: "${SUPABASE_SERVICE_ROLE_KEY:}"
+      bucket: "${SUPABASE_STORAGE_BUCKET:complipilot-evidence-prod}"
+      signed-url-expiration-seconds: "${SUPABASE_SIGNED_URL_EXPIRATION_SECONDS:900}"
+
   ai:
-    base-url: http://localhost:8000
+    base-url: "${AI_SERVICE_BASE_URL:http://localhost:8000}"
+
+  demo-users:
+    enabled: "${APP_DEMO_USERS_ENABLED:true}"
