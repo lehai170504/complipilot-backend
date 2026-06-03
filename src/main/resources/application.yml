@@ -91,6 +91,9 @@ app:
   demo-users:
     enabled: "${APP_DEMO_USERS_ENABLED:false}"
 
+  frontend:
+    base-url: "${APP_FRONTEND_BASE_URL:http://localhost:3000}"
+
 info:
   app:
     name: CompliPilot Backend
