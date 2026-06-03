@@ -3,6 +3,7 @@ package com.complipilot.backend.billing.service;
 import java.time.YearMonth;
 import java.util.UUID;
 
+import com.complipilot.backend.billing.dto.OrganizationUsageResponse;
 import com.complipilot.backend.billing.entity.OrganizationSubscription;
 import com.complipilot.backend.billing.entity.OrganizationUsageCounter;
 import com.complipilot.backend.billing.enums.SubscriptionPlan;
@@ -14,6 +15,7 @@ import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.enums.OrganizationMemberStatus;
 import com.complipilot.backend.organization.repository.OrganizationMemberRepository;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,7 +57,7 @@ public class UsageQuotaService {
     public void requireCanUploadEvidenceFile(UUID organizationId, Long fileSizeBytes) {
         PlanLimit limits = getLimits(organizationId);
         OrganizationUsageCounter counter = getCurrentCounter(organizationId);
-        long safeFileSizeBytes = Math.max(fileSizeBytes == null ? 0 : fileSizeBytes, 0);
+        long safeFileSizeBytes = safeFileSizeBytes(fileSizeBytes);
 
         if (counter.getEvidenceDocumentCount() >= limits.maxEvidenceDocuments()) {
             throw new ConflictException(
@@ -90,6 +92,7 @@ public class UsageQuotaService {
     @Transactional(readOnly = true)
     public void requireCanAddMember(UUID organizationId) {
         PlanLimit limits = getLimits(organizationId);
+
         long activeMembers = organizationMemberRepository.countByOrganization_IdAndStatus(
                 organizationId,
                 OrganizationMemberStatus.ACTIVE
@@ -105,13 +108,46 @@ public class UsageQuotaService {
     @Transactional
     public void recordEvidenceCreated(UUID organizationId, Long fileSizeBytes) {
         OrganizationUsageCounter counter = getOrCreateCurrentCounter(organizationId);
-        counter.recordEvidenceCreated(fileSizeBytes == null ? 0 : fileSizeBytes);
+        counter.recordEvidenceCreated(safeFileSizeBytes(fileSizeBytes));
     }
 
     @Transactional
     public void recordAiAnalysisRun(UUID organizationId) {
         OrganizationUsageCounter counter = getOrCreateCurrentCounter(organizationId);
         counter.recordAiAnalysisRun();
+    }
+
+    @Transactional(readOnly = true)
+    public OrganizationUsageResponse getOrganizationUsage(UUID organizationId) {
+        OrganizationSubscription subscription = subscriptionRepository
+                .findByOrganization_Id(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization subscription not found"));
+
+        if (!subscription.isActive()) {
+            throw new ConflictException("Organization subscription is not active");
+        }
+
+        OrganizationUsageCounter counter = getCurrentCounter(organizationId);
+        PlanLimit limits = planLimitService.getLimits(subscription.getPlan());
+
+        long activeMembers = organizationMemberRepository.countByOrganization_IdAndStatus(
+                organizationId,
+                OrganizationMemberStatus.ACTIVE
+        );
+
+        return new OrganizationUsageResponse(
+                organizationId,
+                subscription.getPlan(),
+                subscription.getStatus(),
+                activeMembers,
+                limits.maxMembers(),
+                counter.getEvidenceDocumentCount(),
+                limits.maxEvidenceDocuments(),
+                counter.getStorageBytes(),
+                limits.maxStorageBytes(),
+                counter.getAiAnalysisCount(),
+                limits.maxAiAnalysesPerMonth()
+        );
     }
 
     private PlanLimit getLimits(UUID organizationId) {
@@ -128,7 +164,10 @@ public class UsageQuotaService {
 
     private OrganizationUsageCounter getCurrentCounter(UUID organizationId) {
         return usageCounterRepository
-                .findByOrganization_IdAndPeriodMonth(organizationId, currentPeriodMonth())
+                .findByOrganization_IdAndPeriodMonth(
+                        organizationId,
+                        currentPeriodMonth()
+                )
                 .orElseGet(() -> new OrganizationUsageCounter(
                         getOrganization(organizationId),
                         currentPeriodMonth()
@@ -137,7 +176,10 @@ public class UsageQuotaService {
 
     private OrganizationUsageCounter getOrCreateCurrentCounter(UUID organizationId) {
         return usageCounterRepository
-                .findByOrganization_IdAndPeriodMonth(organizationId, currentPeriodMonth())
+                .findByOrganization_IdAndPeriodMonth(
+                        organizationId,
+                        currentPeriodMonth()
+                )
                 .orElseGet(() -> usageCounterRepository.save(
                         new OrganizationUsageCounter(
                                 getOrganization(organizationId),
@@ -153,5 +195,13 @@ public class UsageQuotaService {
 
     private String currentPeriodMonth() {
         return YearMonth.now().toString();
+    }
+
+    private long safeFileSizeBytes(Long fileSizeBytes) {
+        if (fileSizeBytes == null || fileSizeBytes < 0) {
+            return 0L;
+        }
+
+        return fileSizeBytes;
     }
 }
