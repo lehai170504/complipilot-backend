@@ -296,7 +296,7 @@ public class OrganizationInvitationService {
             return null;
         }
 
-        return frontendBaseUrl + "/invitations/accept?token=" + token;
+        return frontendBaseUrl + "/invite/" + token;
     }
 
     private OrganizationInvitationResponse toResponse(
