@@ -160,14 +160,9 @@ public class OrganizationMemberManagementService {
     }
 
     private OrganizationMember findOrganizationMember(UUID organizationId, UUID memberId) {
-        OrganizationMember member = organizationMemberRepository.findById(memberId)
+        return organizationMemberRepository
+                .findByIdAndOrganization_Id(memberId, organizationId)
                 .orElseThrow(() -> new NotFoundException("Organization member not found"));
-
-        if (!member.getOrganization().getId().equals(organizationId)) {
-            throw new NotFoundException("Organization member not found");
-        }
-
-        return member;
     }
 
     private void validateAssignableRole(OrganizationMember actorMember, OrganizationMemberRole targetRole) {
