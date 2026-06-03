@@ -163,13 +163,19 @@ public class SupabaseStorageClient {
                     SupabaseSignedDownloadResponse.class
             );
 
+            String signedUrl = signedDownloadResponse.url();
+
+            if (signedUrl.startsWith("/")) {
+                signedUrl = normalizeUrl(storageProperties.supabase().url()) + signedUrl;
+            }
+
             log.info(
                     "Supabase signed download URL created. objectKey={}, hasUrl={}",
                     objectKey,
-                    signedDownloadResponse.url() != null && !signedDownloadResponse.url().isBlank()
+                    signedUrl != null && !signedUrl.isBlank()
             );
 
-            return signedDownloadResponse;
+            return new SupabaseSignedDownloadResponse(signedUrl);
         } catch (Exception exception) {
             log.error(
                     "Failed to create Supabase signed download URL. bucket={}, objectKey={}",
