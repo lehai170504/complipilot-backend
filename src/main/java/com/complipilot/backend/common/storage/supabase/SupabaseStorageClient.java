@@ -88,11 +88,9 @@ public class SupabaseStorageClient {
                     SupabaseSignedUploadResponse.class
             );
 
-            String signedUrl = signedUploadResponse.uploadUrl();
-
-            if (signedUrl.startsWith("/")) {
-                signedUrl = normalizeUrl(storageProperties.supabase().url()) + signedUrl;
-            }
+            String signedUrl = normalizeSignedStorageUrl(
+                    signedUploadResponse.uploadUrl()
+            );
 
             log.info(
                     "Supabase signed upload URL created. objectKey={}, responsePath={}, hasSignedUrl={}, hasToken={}",
@@ -175,11 +173,9 @@ public class SupabaseStorageClient {
                     SupabaseSignedDownloadResponse.class
             );
 
-            String signedUrl = signedDownloadResponse.url();
-
-            if (signedUrl.startsWith("/")) {
-                signedUrl = normalizeUrl(storageProperties.supabase().url()) + signedUrl;
-            }
+            String signedUrl = normalizeSignedStorageUrl(
+                    signedDownloadResponse.url()
+            );
 
             log.info(
                     "Supabase signed download URL created. objectKey={}, hasUrl={}",
@@ -242,5 +238,31 @@ public class SupabaseStorageClient {
         }
 
         return url.substring(0, queryIndex) + "?<masked>";
+    }
+
+    private String normalizeSignedStorageUrl(String signedUrl) {
+        String baseUrl = normalizeUrl(storageProperties.supabase().url());
+
+        if (signedUrl == null || signedUrl.isBlank()) {
+            throw new IllegalStateException("Supabase signed URL must not be blank");
+        }
+
+        if (signedUrl.startsWith("http://") || signedUrl.startsWith("https://")) {
+            return signedUrl;
+        }
+
+        if (signedUrl.startsWith("/storage/v1/")) {
+            return baseUrl + signedUrl;
+        }
+
+        if (signedUrl.startsWith("/object/")) {
+            return baseUrl + "/storage/v1" + signedUrl;
+        }
+
+        if (signedUrl.startsWith("object/")) {
+            return baseUrl + "/storage/v1/" + signedUrl;
+        }
+
+        return baseUrl + "/storage/v1/" + signedUrl;
     }
 }
