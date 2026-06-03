@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.complipilot.backend.audit.enums.AuditAction;
 import com.complipilot.backend.audit.enums.AuditResourceType;
 import com.complipilot.backend.audit.service.AuditService;
+import com.complipilot.backend.billing.service.UsageQuotaService;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
@@ -58,8 +59,9 @@ public class EvidenceService {
     private final ObjectProvider<StorageService> storageServiceProvider;
     private final EvidenceObjectKeyService evidenceObjectKeyService;
     private final StorageProperties storageProperties;
-    private final AuditService auditService;
     private final SupabaseStorageClient supabaseStorageClient;
+    private final AuditService auditService;
+    private final UsageQuotaService usageQuotaService;
 
     public EvidenceService(
             EvidenceDocumentRepository evidenceDocumentRepository,
@@ -72,7 +74,8 @@ public class EvidenceService {
             EvidenceObjectKeyService evidenceObjectKeyService,
             StorageProperties storageProperties,
             SupabaseStorageClient supabaseStorageClient,
-            AuditService auditService
+            AuditService auditService,
+            UsageQuotaService usageQuotaService
     ) {
         this.evidenceDocumentRepository = evidenceDocumentRepository;
         this.evidenceLinkRepository = evidenceLinkRepository;
@@ -85,6 +88,7 @@ public class EvidenceService {
         this.storageProperties = storageProperties;
         this.supabaseStorageClient = supabaseStorageClient;
         this.auditService = auditService;
+        this.usageQuotaService = usageQuotaService;
     }
 
     @Transactional
@@ -94,6 +98,11 @@ public class EvidenceService {
             CreateEvidenceDocumentRequest request
     ) {
         tenantAccessService.requireManagerRole(organizationId, currentUserId);
+
+        usageQuotaService.requireCanCreateEvidence(
+                organizationId,
+                safeFileSizeBytes(request.fileSizeBytes())
+        );
 
         validateEvidenceSource(
                 request.sourceType(),
@@ -136,6 +145,11 @@ public class EvidenceService {
                         evidenceDocument.getSourceType(),
                         evidenceDocument.getEvidenceType()
                 )
+        );
+
+        usageQuotaService.recordEvidenceCreated(
+                organizationId,
+                safeFileSizeBytes(evidenceDocument.getFileSizeBytes())
         );
 
         return toEvidenceDocumentResponse(evidenceDocument);
@@ -378,6 +392,11 @@ public class EvidenceService {
     ) {
         tenantAccessService.requireManagerRole(organizationId, currentUserId);
 
+        usageQuotaService.requireCanUploadEvidenceFile(
+                organizationId,
+                safeFileSizeBytes(request.fileSizeBytes())
+        );
+
         String objectKey = evidenceObjectKeyService.generateEvidenceObjectKey(
                 organizationId,
                 request.filename()
@@ -472,6 +491,14 @@ public class EvidenceService {
 
     private int secondsToMinutes(int seconds) {
         return Math.max(1, (int) Math.ceil(seconds / 60.0));
+    }
+
+    private long safeFileSizeBytes(Long fileSizeBytes) {
+        if (fileSizeBytes == null || fileSizeBytes < 0) {
+            return 0L;
+        }
+
+        return fileSizeBytes;
     }
 
     private void validateEvidenceSource(

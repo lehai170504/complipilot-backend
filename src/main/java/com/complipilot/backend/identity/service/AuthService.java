@@ -2,6 +2,7 @@ package com.complipilot.backend.identity.service;
 
 import com.complipilot.backend.auth.dto.LogoutRequest;
 import com.complipilot.backend.auth.dto.RefreshTokenRequest;
+import com.complipilot.backend.billing.service.UsageQuotaService;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.UnauthorizedException;
 import com.complipilot.backend.common.security.JwtService;
@@ -33,6 +34,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final UsageQuotaService usageQuotaService;
 
     public AuthService(
             UserRepository userRepository,
@@ -40,7 +42,8 @@ public class AuthService {
             OrganizationMemberRepository organizationMemberRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenService refreshTokenService
+            RefreshTokenService refreshTokenService,
+            UsageQuotaService usageQuotaService
     ) {
         this.userRepository = userRepository;
         this.organizationRepository = organizationRepository;
@@ -48,6 +51,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.usageQuotaService = usageQuotaService;
     }
 
     @Transactional
@@ -85,6 +89,8 @@ public class AuthService {
                         OrganizationMemberRole.OWNER
                 )
         );
+
+        usageQuotaService.createDefaultSubscription(organization);
 
         return new RegisterResponse(
                 user.getId(),

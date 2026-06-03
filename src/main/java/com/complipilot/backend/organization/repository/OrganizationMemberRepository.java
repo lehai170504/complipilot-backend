@@ -51,4 +51,8 @@ public interface OrganizationMemberRepository extends JpaRepository<Organization
             OrganizationMemberStatus status
     );
 
+    long countByOrganization_IdAndStatus(
+            UUID organizationId,
+            OrganizationMemberStatus status
+    );
 }

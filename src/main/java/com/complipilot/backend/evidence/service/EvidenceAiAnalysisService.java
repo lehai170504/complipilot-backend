@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.complipilot.backend.ai.dto.EvidenceAiAnalysisRequest;
 import com.complipilot.backend.ai.dto.EvidenceAiAnalysisResponse;
 import com.complipilot.backend.ai.service.AiEvidenceAnalysisClient;
+import com.complipilot.backend.billing.service.UsageQuotaService;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.evidence.dto.EvidenceAiAnalysisRecordResponse;
 import com.complipilot.backend.evidence.entity.ComplianceItemEvidenceLink;
@@ -30,6 +31,7 @@ public class EvidenceAiAnalysisService {
     private final UserRepository userRepository;
     private final TenantAccessService tenantAccessService;
     private final AiEvidenceAnalysisClient aiEvidenceAnalysisClient;
+    private final UsageQuotaService usageQuotaService;
 
     public EvidenceAiAnalysisService(
             EvidenceDocumentRepository evidenceDocumentRepository,
@@ -37,7 +39,8 @@ public class EvidenceAiAnalysisService {
             EvidenceAiAnalysisRepository evidenceAiAnalysisRepository,
             UserRepository userRepository,
             TenantAccessService tenantAccessService,
-            AiEvidenceAnalysisClient aiEvidenceAnalysisClient
+            AiEvidenceAnalysisClient aiEvidenceAnalysisClient,
+            UsageQuotaService usageQuotaService
     ) {
         this.evidenceDocumentRepository = evidenceDocumentRepository;
         this.evidenceLinkRepository = evidenceLinkRepository;
@@ -45,6 +48,7 @@ public class EvidenceAiAnalysisService {
         this.userRepository = userRepository;
         this.tenantAccessService = tenantAccessService;
         this.aiEvidenceAnalysisClient = aiEvidenceAnalysisClient;
+        this.usageQuotaService = usageQuotaService;
     }
 
     @Transactional
@@ -54,6 +58,7 @@ public class EvidenceAiAnalysisService {
             UUID userId
     ) {
         tenantAccessService.requireActiveMember(organizationId, userId);
+        usageQuotaService.requireCanRunAiAnalysis(organizationId);
 
         EvidenceDocument evidence = evidenceDocumentRepository
                 .findByIdAndOrganization_Id(evidenceId, organizationId)
@@ -116,6 +121,8 @@ public class EvidenceAiAnalysisService {
 
         EvidenceAiAnalysis savedAnalysis =
                 evidenceAiAnalysisRepository.save(analysis);
+
+        usageQuotaService.recordAiAnalysisRun(organizationId);
 
         return toResponse(savedAnalysis);
     }

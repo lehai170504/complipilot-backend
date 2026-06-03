@@ -8,6 +8,7 @@ import com.complipilot.backend.common.error.BadRequestException;
 import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.ForbiddenException;
 import com.complipilot.backend.common.error.NotFoundException;
+import com.complipilot.backend.billing.service.UsageQuotaService;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.dto.CreateOrganizationMemberRequest;
@@ -32,19 +33,22 @@ public class OrganizationMemberManagementService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TenantAccessService tenantAccessService;
+    private final UsageQuotaService usageQuotaService;
 
     public OrganizationMemberManagementService(
             OrganizationRepository organizationRepository,
             OrganizationMemberRepository organizationMemberRepository,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            TenantAccessService tenantAccessService
+            TenantAccessService tenantAccessService,
+            UsageQuotaService usageQuotaService
     ) {
         this.organizationRepository = organizationRepository;
         this.organizationMemberRepository = organizationMemberRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tenantAccessService = tenantAccessService;
+        this.usageQuotaService = usageQuotaService;
     }
 
     @Transactional(readOnly = true)
@@ -68,6 +72,7 @@ public class OrganizationMemberManagementService {
     ) {
         OrganizationMember actorMember = tenantAccessService.requireAdminRole(organizationId, actorUserId);
         validateAssignableRole(actorMember, request.role());
+        usageQuotaService.requireCanAddMember(organizationId);
 
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new NotFoundException("Organization not found"));
