@@ -13,8 +13,10 @@ import java.util.stream.Collectors;
 
 import com.complipilot.backend.common.storage.StorageProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.stereotype.Component;
 
 @Component
@@ -86,15 +88,25 @@ public class SupabaseStorageClient {
                     SupabaseSignedUploadResponse.class
             );
 
+            String signedUrl = signedUploadResponse.uploadUrl();
+
+            if (signedUrl.startsWith("/")) {
+                signedUrl = normalizeUrl(storageProperties.supabase().url()) + signedUrl;
+            }
+
             log.info(
                     "Supabase signed upload URL created. objectKey={}, responsePath={}, hasSignedUrl={}, hasToken={}",
                     objectKey,
                     signedUploadResponse.path(),
-                    signedUploadResponse.signedUrl() != null && !signedUploadResponse.signedUrl().isBlank(),
+                    signedUrl != null && !signedUrl.isBlank(),
                     signedUploadResponse.token() != null && !signedUploadResponse.token().isBlank()
             );
 
-            return signedUploadResponse;
+            return new SupabaseSignedUploadResponse(
+                    signedUrl,
+                    signedUploadResponse.path(),
+                    signedUploadResponse.token()
+            );
         } catch (Exception exception) {
             log.error(
                     "Failed to create Supabase signed upload URL. bucket={}, objectKey={}",

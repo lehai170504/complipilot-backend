@@ -4,6 +4,7 @@ public record CreateEvidenceUploadUrlResponse(
         String objectKey,
         String uploadUrl,
         String method,
-        int expiresInMinutes
+        int expiresInMinutes,
+        String uploadToken
 ) {
 }

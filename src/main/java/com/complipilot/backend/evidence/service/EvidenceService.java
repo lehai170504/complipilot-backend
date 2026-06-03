@@ -12,12 +12,23 @@ import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.sorting.SortRequest;
 import com.complipilot.backend.common.sorting.SortUtils;
+import com.complipilot.backend.common.storage.EvidenceObjectKeyService;
+import com.complipilot.backend.common.storage.StorageProperties;
+import com.complipilot.backend.common.storage.StorageService;
 import com.complipilot.backend.common.storage.supabase.SupabaseSignedDownloadResponse;
 import com.complipilot.backend.common.storage.supabase.SupabaseSignedUploadResponse;
 import com.complipilot.backend.common.storage.supabase.SupabaseStorageClient;
 import com.complipilot.backend.compliance.entity.CompanyComplianceItem;
 import com.complipilot.backend.compliance.repository.CompanyComplianceItemRepository;
-import com.complipilot.backend.evidence.dto.*;
+import com.complipilot.backend.evidence.dto.ComplianceItemEvidenceResponse;
+import com.complipilot.backend.evidence.dto.CreateEvidenceDocumentRequest;
+import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlRequest;
+import com.complipilot.backend.evidence.dto.CreateEvidenceUploadUrlResponse;
+import com.complipilot.backend.evidence.dto.EvidenceDocumentResponse;
+import com.complipilot.backend.evidence.dto.EvidenceDownloadUrlResponse;
+import com.complipilot.backend.evidence.dto.EvidenceFilterRequest;
+import com.complipilot.backend.evidence.dto.LinkEvidenceRequest;
+import com.complipilot.backend.evidence.dto.UpdateEvidenceDocumentRequest;
 import com.complipilot.backend.evidence.entity.ComplianceItemEvidenceLink;
 import com.complipilot.backend.evidence.entity.EvidenceDocument;
 import com.complipilot.backend.evidence.enums.EvidenceSourceType;
@@ -29,14 +40,11 @@ import com.complipilot.backend.identity.repository.UserRepository;
 import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.organization.service.TenantAccessService;
-import com.complipilot.backend.common.storage.StorageProperties;
-import com.complipilot.backend.common.storage.StorageService;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.complipilot.backend.common.storage.EvidenceObjectKeyService;
-import org.springframework.beans.factory.ObjectProvider;
 
 @Service
 public class EvidenceService {
@@ -87,7 +95,11 @@ public class EvidenceService {
     ) {
         tenantAccessService.requireManagerRole(organizationId, currentUserId);
 
-        validateEvidenceSource(request.sourceType(), request.fileObjectKey(), request.externalUrl());
+        validateEvidenceSource(
+                request.sourceType(),
+                request.fileObjectKey(),
+                request.externalUrl()
+        );
 
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new NotFoundException("Organization not found"));
@@ -143,6 +155,7 @@ public class EvidenceService {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 100);
         String normalizedQuery = normalizeQuery(filter.query());
+
         var pageable = PageRequest.of(
                 safePage,
                 safeSize,
@@ -156,20 +169,20 @@ public class EvidenceService {
         return PageResponse.from(
                 (normalizedQuery == null
                         ? evidenceDocumentRepository.findByOrganizationIdWithFilters(
-                                organizationId,
-                                EvidenceStatus.ARCHIVED,
-                                filter.evidenceType(),
-                                filter.sourceType(),
-                                pageable
-                        )
+                        organizationId,
+                        EvidenceStatus.ARCHIVED,
+                        filter.evidenceType(),
+                        filter.sourceType(),
+                        pageable
+                )
                         : evidenceDocumentRepository.findByOrganizationIdWithFilters(
-                                organizationId,
-                                EvidenceStatus.ARCHIVED,
-                                filter.evidenceType(),
-                                filter.sourceType(),
-                                normalizedQuery,
-                                pageable
-                        ))
+                        organizationId,
+                        EvidenceStatus.ARCHIVED,
+                        filter.evidenceType(),
+                        filter.sourceType(),
+                        normalizedQuery,
+                        pageable
+                ))
                         .map(this::toEvidenceDocumentResponse)
         );
     }
@@ -374,11 +387,16 @@ public class EvidenceService {
             SupabaseSignedUploadResponse response =
                     supabaseStorageClient.createSignedUploadUrl(objectKey);
 
+            String storedObjectKey = response.path() != null && !response.path().isBlank()
+                    ? response.path()
+                    : objectKey;
+
             return new CreateEvidenceUploadUrlResponse(
-                    objectKey,
+                    storedObjectKey,
                     response.uploadUrl(),
                     "PUT",
-                    secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds())
+                    secondsToMinutes(storageProperties.supabase().signedUrlExpirationSeconds()),
+                    response.token()
             );
         }
 
@@ -397,7 +415,8 @@ public class EvidenceService {
                 objectKey,
                 uploadUrl,
                 "PUT",
-                storageProperties.presignedUrlExpirationMinutes()
+                storageProperties.presignedUrlExpirationMinutes(),
+                null
         );
     }
 

@@ -11,10 +11,12 @@ public record SupabaseSignedUploadResponse(
         String token
 ) {
     public String uploadUrl() {
-        if (signedUrl != null && !signedUrl.isBlank()) {
-            return signedUrl;
+        if (signedUrl == null || signedUrl.isBlank()) {
+            throw new IllegalStateException(
+                    "Supabase signed upload URL response does not contain signedUrl/signedURL/url"
+            );
         }
 
-        throw new IllegalStateException("Supabase signed upload URL response does not contain signedUrl/url");
+        return signedUrl;
     }
 }
