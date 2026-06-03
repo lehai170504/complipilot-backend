@@ -1,158 +1,153 @@
-# CompliPilot Backend
+# CompliPilot — AI Compliance & Evidence OS
 
-CompliPilot is an **AI Compliance & Evidence OS** for managing compliance controls, evidence, tasks, audit history, organization workspaces, and AI-assisted evidence review.
+CompliPilot is an AI-assisted compliance and evidence management platform for organizations.
 
-This repository contains the Spring Boot backend API and the local Docker Compose setup for infrastructure services.
+It helps teams manage:
 
-## Tech Stack
+- Organizations and workspaces
+- Compliance requirements
+- Evidence documents
+- Evidence file upload/download
+- Audit trails
+- AI-assisted evidence analysis
 
-* Java 21
-* Spring Boot 4
-* Spring Security + JWT
-* PostgreSQL 16
-* Flyway migrations
-* MinIO object storage
-* FastAPI AI service integration
-* Docker Compose
+The project is built as a production-style full-stack system using:
 
-## Main Features
+- Frontend: Next.js, TypeScript, Tailwind CSS, shadcn/ui
+- Backend: Spring Boot, PostgreSQL, JWT authentication
+- AI Service: FastAPI
+- Database: Neon PostgreSQL
+- File Storage: Supabase Storage
+- Deployment: Vercel + Render + Neon + Supabase
 
-* Authentication with access and refresh tokens
-* Organization workspaces and role-based access control
-* Organization member management
-* Compliance frameworks and requirements
-* Compliance control lifecycle management
-* Evidence metadata management
-* Presigned upload and download URL flow for file evidence
-* Evidence-to-control linking
-* Compliance task tracking
-* Audit trail for key compliance actions
-* AI evidence analysis through the FastAPI AI service
-* Persisted AI evidence review history
-* AI missing-evidence recommendation for compliance controls
+---
 
-## Local Prerequisites
+## 1. Production Architecture
+
+```txt
+User Browser
+    ↓
+Vercel Frontend
+    ↓
+Render Backend API
+    ↓
+Neon PostgreSQL
+
+Render Backend API
+    ↓
+Supabase Storage
+
+Render Backend API
+    ↓
+Render AI Service
+```
+
+### Services
+
+| Service | Platform | Purpose |
+|---|---|---|
+| Frontend | Vercel | User interface |
+| Backend API | Render | Auth, organizations, compliance, evidence, audit |
+| AI Service | Render | Evidence analysis |
+| Database | Neon | PostgreSQL production database |
+| Storage | Supabase Storage | Private evidence file storage |
+
+---
+
+## 2. Core Features
+
+### Authentication
+
+- Register
+- Login
+- JWT access token authentication
+- Role-based access control
+
+### Organizations and Workspaces
+
+- Organization/workspace context
+- Member-based access control
+- Manager/member permissions
+
+### Compliance Management
+
+- Compliance items
+- Requirement tracking
+- Evidence linking
+
+### Evidence Management
+
+- Create evidence metadata
+- Upload file evidence
+- Download file evidence through signed URLs
+- Archive evidence
+- Link evidence to compliance items
+
+### AI Evidence Analysis
+
+- Analyze evidence using an AI service
+- Generate summary
+- Risk level
+- Confidence score
+- Findings
+- Missing information
+- Suggested actions
+- AI analysis history
+
+### Audit Trail
+
+- Records important actions such as evidence creation, update, archive, evidence link creation, and unlink actions
+
+---
+
+## 3. Local Development Requirements
 
 Install:
 
-* Java 21
-* Docker Desktop
-* Node.js for the frontend
-* Python 3.12 if running the AI service outside Docker
+- Java 21
+- Maven Wrapper
+- Docker Desktop
+- Node.js
+- Python 3.12
+- PostgreSQL through Docker Compose
+- MinIO through Docker Compose
 
-The Maven wrapper is already included in this repository.
+---
 
-## Recommended Repository Layout
-
-Use this local folder structure:
-
-```txt
-D:\GitHub\
-  complipilot-backend
-  complipilot-frontend
-  complipilot-ai-service
-```
-
-The backend Docker Compose file expects the AI service repository to be located at:
-
-```txt
-../complipilot-ai-service
-```
-
-## Environment Variables
-
-Create a `.env` file in `complipilot-backend` based on `.env.example`.
-
-Minimum local values:
-
-```env
-POSTGRES_DB=complipilot
-POSTGRES_USER=complipilot
-POSTGRES_PASSWORD=123456
-POSTGRES_PORT=5433
-
-MINIO_ROOT_USER=complipilot
-MINIO_ROOT_PASSWORD=complipilot_minio_password
-MINIO_API_PORT=9000
-MINIO_CONSOLE_PORT=9001
-
-AI_SERVICE_PORT=8000
-AI_PROVIDER=rules
-AI_FALLBACK_TO_RULES=true
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
-```
-
-To enable Gemini-backed AI review:
-
-```env
-AI_PROVIDER=gemini
-GEMINI_API_KEY=your_real_gemini_api_key
-AI_FALLBACK_TO_RULES=true
-```
-
-When `AI_FALLBACK_TO_RULES=true`, the AI service falls back to rule-based analysis if Gemini is unavailable.
-
-## Run Local Infrastructure
-
-From the backend repository:
+## 4. Backend Local Setup
 
 ```powershell
 cd D:\GitHub\complipilot-backend
+
+copy .env.example .env
 
 docker compose up -d --build --remove-orphans
-docker compose ps
-```
 
-Expected services:
-
-```txt
-complipilot-backend-postgres
-complipilot-backend-minio
-complipilot-ai-service
-```
-
-Check AI service:
-
-```powershell
-curl.exe http://localhost:8000/health
-```
-
-Useful local service URLs:
-
-```txt
-AI Swagger:       http://localhost:8000/docs
-AI Health:        http://localhost:8000/health
-MinIO Console:   http://localhost:9001
-PostgreSQL:      localhost:5433
-```
-
-## Run Backend
-
-From the backend repository:
-
-```powershell
-cd D:\GitHub\complipilot-backend
-
+.\mvnw.cmd -DskipTests package
 .\mvnw.cmd spring-boot:run
 ```
 
-Backend runs on:
+Backend local URL:
 
 ```txt
 http://localhost:8081
 ```
 
-Useful backend URLs:
+Swagger local:
 
 ```txt
-Backend Swagger: http://localhost:8081/swagger-ui/index.html
-Actuator Health: http://localhost:8081/actuator/health
+http://localhost:8081/swagger-ui/index.html
 ```
 
-## Run Frontend
+Health check:
 
-From the frontend repository:
+```txt
+http://localhost:8081/actuator/health
+```
+
+---
+
+## 5. Frontend Local Setup
 
 ```powershell
 cd D:\GitHub\complipilot-frontend
@@ -161,296 +156,406 @@ npm install
 npm run dev
 ```
 
-Frontend runs on:
+Frontend local URL:
 
 ```txt
 http://localhost:3000
 ```
 
-## Local Development Flow
+Required local frontend environment:
 
-Start services in this order.
-
-### 1. Start Docker infrastructure
-
-```powershell
-cd D:\GitHub\complipilot-backend
-
-docker compose up -d --build --remove-orphans
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=complipilot-evidence-prod
 ```
 
-This starts:
+Important:
 
 ```txt
-PostgreSQL
-MinIO
-FastAPI AI service
+The frontend must only use the Supabase anon key.
+Never expose the Supabase service role key in frontend environment variables.
 ```
 
-### 2. Start backend
+---
+
+## 6. AI Service Local Setup
 
 ```powershell
-cd D:\GitHub\complipilot-backend
+cd D:\GitHub\complipilot-ai-service
 
-.\mvnw.cmd spring-boot:run
+python -m venv .venv
+.\.venv\Scripts\activate
+
+pip install -r requirements.txt
+
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 3. Start frontend
-
-```powershell
-cd D:\GitHub\complipilot-frontend
-
-npm run dev
-```
-
-Then open:
-
-```txt
-http://localhost:3000
-```
-
-## AI Service Integration
-
-The backend calls the AI service through:
-
-```yml
-app:
-  ai:
-    base-url: http://localhost:8000
-```
-
-For local development where the backend runs through Maven and the AI service runs through Docker, use:
+AI service local URL:
 
 ```txt
 http://localhost:8000
 ```
 
-If the backend is also running inside Docker Compose in the future, use:
+Health check:
 
 ```txt
-http://ai-service:8000
+http://localhost:8000/health
 ```
 
-Frontend calls the backend only. The frontend does not call the AI service directly.
-
-## Backend AI Endpoints
-
-The backend exposes these AI-powered endpoints:
-
-```http
-POST /api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analyze
-GET  /api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analysis/latest
-GET  /api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analyses
-
-POST /api/v1/organizations/{organizationId}/compliance-items/{itemId}/ai/suggest-evidence
-```
-
-## Internal AI Service Endpoints
-
-The AI service exposes these internal endpoints:
-
-```http
-POST /api/v1/ai/evidence/analyze
-POST /api/v1/ai/compliance/suggest-evidence
-```
-
-## Evidence Workflow
-
-Typical evidence workflow:
-
-1. Create URL evidence or upload file evidence.
-2. Link evidence to a compliance control.
-3. Run AI evidence review.
-4. Save and view the latest AI analysis.
-5. Review AI analysis history.
-6. Use compliance-item AI recommendations to identify missing evidence.
-7. Update control notes, tasks, and status based on review outcome.
-
-## Compliance Workflow
-
-Typical compliance workflow:
-
-1. Apply a framework or seed the security baseline.
-2. Review generated compliance controls.
-3. Update control status, notes, and due dates.
-4. Link evidence to each control.
-5. Run AI evidence coverage recommendation.
-6. Create tasks for missing evidence or remediation work.
-7. Review audit trail for key actions.
-
-## MinIO
-
-MinIO is used for local object storage.
-
-Console:
+Docs:
 
 ```txt
-http://localhost:9001
+http://localhost:8000/docs
 ```
 
-Default local credentials depend on `.env`:
+---
+
+## 7. Backend Environment Variables
+
+### Local Backend `.env`
 
 ```env
+SPRING_PROFILES_ACTIVE=local
+
+POSTGRES_DB=complipilot
+POSTGRES_USER=complipilot
+POSTGRES_PASSWORD=123456
+POSTGRES_PORT=5433
+
+API_PORT=8081
+
+DATABASE_URL=jdbc:postgresql://localhost:5433/complipilot
+DATABASE_USERNAME=complipilot
+DATABASE_PASSWORD=123456
+
+JWT_SECRET=change_this_to_a_long_random_secret_for_local_development
+JWT_ISSUER=complipilot-backend
+JWT_ACCESS_TOKEN_EXPIRATION_SECONDS=3600
+JWT_REFRESH_TOKEN_EXPIRATION_SECONDS=2592000
+JWT_REFRESH_TOKEN_CLEANUP_FIXED_RATE_MS=3600000
+JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS=604800
+
+APP_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+
+STORAGE_PROVIDER=minio
+
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_PUBLIC_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=complipilot
+MINIO_SECRET_KEY=complipilot_minio_password
+MINIO_BUCKET_EVIDENCE=complipilot-evidence
+MINIO_PRESIGNED_URL_EXPIRATION_MINUTES=15
+
 MINIO_ROOT_USER=complipilot
 MINIO_ROOT_PASSWORD=complipilot_minio_password
+MINIO_API_PORT=9000
+MINIO_CONSOLE_PORT=9001
+
+AI_SERVICE_BASE_URL=http://localhost:8000
+
+SPRINGDOC_ENABLED=true
+
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_AUTH_CAPACITY=20
+RATE_LIMIT_AUTH_WINDOW_SECONDS=60
+
+APP_DEMO_USERS_ENABLED=true
+APP_VERSION=0.0.1-SNAPSHOT
 ```
 
-## Database Migrations
-
-Flyway migrations are stored in:
-
-```txt
-src/main/resources/db/migration
-```
-
-Run the backend and Flyway applies pending migrations automatically.
-
-Current notable migrations include:
-
-* Authentication and user tables
-* Organization and membership tables
-* Compliance framework and requirement tables
-* Compliance item tables
-* Evidence document and evidence link tables
-* Compliance task tables
-* Audit event tables
-* AI evidence analysis history table
-
-## Build and Test
-
-Compile backend:
-
-```powershell
-cd D:\GitHub\complipilot-backend
-
-.\mvnw.cmd -DskipTests package
-```
-
-Run tests:
-
-```powershell
-.\mvnw.cmd test
-```
-
-## Useful Local URLs
-
-```txt
-Frontend:        http://localhost:3000
-Backend API:     http://localhost:8081
-Backend Swagger: http://localhost:8081/swagger-ui/index.html
-Actuator Health: http://localhost:8081/actuator/health
-AI Swagger:      http://localhost:8000/docs
-AI Health:       http://localhost:8000/health
-MinIO Console:   http://localhost:9001
-PostgreSQL:      localhost:5433
-```
-
-## Common Issues
-
-### Container name already in use
-
-If Docker reports:
-
-```txt
-container name "/complipilot-ai-service" is already in use
-```
-
-Run:
-
-```powershell
-docker rm -f complipilot-ai-service
-
-cd D:\GitHub\complipilot-backend
-docker compose up -d --build --remove-orphans
-```
-
-### Orphan containers
-
-If Docker reports orphan containers, run:
-
-```powershell
-cd D:\GitHub\complipilot-backend
-
-docker compose up -d --build --remove-orphans
-```
-
-### Port 8000 already in use
-
-If AI service port is busy, stop the local uvicorn process or Docker container:
-
-```powershell
-docker stop complipilot-ai-service
-```
-
-### Port 8081 already in use
-
-Find the process:
-
-```powershell
-netstat -ano | findstr :8081
-```
-
-Then stop the process or change backend port.
-
-### AI service returns rule-based output
-
-Check `.env`:
+### Production Backend on Render
 
 ```env
-AI_PROVIDER=gemini
-GEMINI_API_KEY=your_real_key
-AI_FALLBACK_TO_RULES=true
+SPRING_PROFILES_ACTIVE=prod
+
+DATABASE_URL=jdbc:postgresql://your-neon-host/neondb?sslmode=require
+DATABASE_USERNAME=your_neon_user
+DATABASE_PASSWORD=your_neon_password
+
+JWT_SECRET=your_long_random_secret_at_least_64_chars
+JWT_ISSUER=complipilot-backend
+JWT_ACCESS_TOKEN_EXPIRATION_SECONDS=3600
+JWT_REFRESH_TOKEN_EXPIRATION_SECONDS=2592000
+JWT_REFRESH_TOKEN_CLEANUP_FIXED_RATE_MS=3600000
+JWT_REVOKED_REFRESH_TOKEN_RETENTION_SECONDS=604800
+
+APP_CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+
+STORAGE_PROVIDER=supabase
+
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_STORAGE_BUCKET=complipilot-evidence-prod
+SUPABASE_SIGNED_URL_EXPIRATION_SECONDS=900
+
+AI_SERVICE_BASE_URL=https://your-ai-service.onrender.com
+
+SPRINGDOC_ENABLED=false
+
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_AUTH_CAPACITY=10
+RATE_LIMIT_AUTH_WINDOW_SECONDS=60
+
+APP_DEMO_USERS_ENABLED=false
+APP_VERSION=0.0.1-SNAPSHOT
+
+JAVA_TOOL_OPTIONS=-Xms128m -Xmx384m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom
 ```
 
-If the key is missing, invalid, or quota is unavailable, the service may fall back to rule-based review.
+Important:
 
-### PostgreSQL data not resetting
+- Do not manually set `PORT` on Render.
+- Render injects `PORT` automatically.
+- Do not commit `.env` or production secrets.
+- Supabase `service_role` key must only be used by the backend.
+- The frontend must only use Supabase anon key.
 
-Docker volumes persist data. To reset local database and MinIO data:
+---
 
-```powershell
-cd D:\GitHub\complipilot-backend
+## 8. Frontend Environment Variables
 
-docker compose down -v
-docker compose up -d --build
+### Production on Vercel
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://your-backend.onrender.com
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=complipilot-evidence-prod
 ```
 
-Use this carefully because it deletes local PostgreSQL and MinIO data.
+Important:
 
-## Recommended Commit Checks
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` is safe for browser usage.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` in Vercel frontend variables.
+- Redeploy Vercel after changing environment variables.
 
-Before pushing backend changes:
+---
+
+## 9. Evidence File Flow
+
+### Upload Flow
+
+```txt
+Frontend
+→ POST /api/v1/organizations/{organizationId}/evidence/upload-url
+→ Backend creates Supabase signed upload URL
+→ Frontend uploads file to Supabase Storage using signed upload token
+→ Frontend creates evidence metadata in backend only after upload succeeds
+```
+
+Important:
+
+```txt
+Evidence metadata must not be created if file upload fails.
+```
+
+### Download Flow
+
+```txt
+Frontend
+→ POST /api/v1/organizations/{organizationId}/evidence/{evidenceId}/download-url
+→ Backend creates Supabase signed download URL
+→ Frontend opens temporary signed URL
+```
+
+The storage bucket is private. Files are not served through public URLs.
+
+---
+
+## 10. AI Evidence Analysis Flow
+
+```txt
+Frontend
+→ POST /api/v1/organizations/{organizationId}/evidence/{evidenceId}/ai/analyze
+→ Backend validates organization access
+→ Backend sends evidence context to AI service
+→ AI service returns summary, findings, risk level, missing information, and suggested actions
+→ Backend stores or returns the analysis
+```
+
+---
+
+## 11. Deployment Checklist
+
+### Backend Render
+
+- Set production environment variables
+- Connect GitHub repo
+- Deploy latest commit
+- Check health endpoint:
+
+```txt
+https://your-backend.onrender.com/actuator/health
+```
+
+### AI Service Render
+
+- Set AI environment variables
+- Deploy latest commit
+- Check health endpoint:
+
+```txt
+https://your-ai-service.onrender.com/health
+```
+
+### Frontend Vercel
+
+- Set frontend environment variables
+- Redeploy latest commit
+- Test login, upload, download, and AI analysis
+
+### Supabase
+
+- Create private bucket:
+
+```txt
+complipilot-evidence-prod
+```
+
+- Use service role key only in backend
+- Use anon key only in frontend
+
+### Neon
+
+- Create PostgreSQL database
+- Use JDBC connection string in backend Render env
+
+---
+
+## 12. Common Issues
+
+### CORS from Frontend to Backend
+
+Check:
+
+```env
+APP_CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+```
+
+No trailing slash.
+
+Correct:
+
+```txt
+https://your-frontend.vercel.app
+```
+
+Wrong:
+
+```txt
+https://your-frontend.vercel.app/
+```
+
+### File Not Found in Storage
+
+This usually means evidence metadata exists in the database, but the actual file object was not uploaded to Supabase Storage.
+
+Fix:
+
+```txt
+Archive the broken evidence record
+Upload the file again
+```
+
+### Invalid Supabase Signed URL
+
+If the browser shows:
+
+```txt
+requested path is invalid
+```
+
+check that signed URLs include:
+
+```txt
+/storage/v1/object/...
+```
+
+### AI Service 502
+
+Check:
+
+```txt
+AI_SERVICE_BASE_URL
+AI service health endpoint
+AI service Render logs
+```
+
+For stable demo mode, use rules-based AI fallback.
+
+---
+
+## 13. Useful Commands
+
+Backend:
 
 ```powershell
 cd D:\GitHub\complipilot-backend
 
 .\mvnw.cmd -DskipTests package
+.\mvnw.cmd spring-boot:run
 ```
 
-Before pushing frontend changes:
+Frontend:
 
 ```powershell
 cd D:\GitHub\complipilot-frontend
 
 npm run lint
 npm run build
+npm run dev
 ```
 
-Before pushing AI service changes:
+AI service:
 
 ```powershell
 cd D:\GitHub\complipilot-ai-service
 
-.venv\Scripts\activate
-python -m compileall app
+.\.venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000
 ```
 
-## Related Repositories
+Git:
 
-Recommended local setup:
+```powershell
+git status
+git add .
+git commit -m "message"
+git push
+```
+
+---
+
+## 14. Production Security Notes
+
+- Do not commit `.env`
+- Do not expose JWT secret
+- Do not expose Supabase service role key in frontend
+- Keep storage bucket private
+- Use signed URLs for upload/download
+- Disable Swagger in production unless needed for demo
+- Restrict CORS to frontend domain only
+- Use strong JWT secret in production
+- Rotate secrets if they were accidentally shared
+
+---
+
+## 15. Recommended Demo Flow
 
 ```txt
-complipilot-backend      Spring Boot backend API and local Docker Compose
-complipilot-frontend     Next.js frontend
-complipilot-ai-service   FastAPI AI service
+Login
+→ Open workspace
+→ Open Evidence
+→ Upload new evidence file
+→ Download evidence file
+→ Link evidence to compliance item
+→ Run AI analysis
+→ View findings, missing information, and suggested actions
+→ Close AI panel
+→ View AI analysis history
 ```
+
+Avoid using old evidence records created before the Supabase upload flow was fixed.
