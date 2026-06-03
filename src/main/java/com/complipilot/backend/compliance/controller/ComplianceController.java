@@ -4,16 +4,16 @@ import java.util.List;
 import java.util.UUID;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
+import com.complipilot.backend.common.security.PlatformAdminService;
 import com.complipilot.backend.compliance.dto.ComplianceSummaryResponse;
-import com.complipilot.backend.compliance.dto.framework.ApplyFrameworkResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CompanyComplianceItemResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.CreateCompanyComplianceItemRequest;
-import com.complipilot.backend.compliance.dto.framework.CreateFrameworkRequest;
-import com.complipilot.backend.compliance.dto.requirement.CreateRequirementRequest;
-import com.complipilot.backend.compliance.dto.framework.FrameworkResponse;
-import com.complipilot.backend.compliance.dto.requirement.RequirementResponse;
 import com.complipilot.backend.compliance.dto.complianceItem.UpdateCompanyComplianceItemRequest;
-
+import com.complipilot.backend.compliance.dto.framework.ApplyFrameworkResponse;
+import com.complipilot.backend.compliance.dto.framework.CreateFrameworkRequest;
+import com.complipilot.backend.compliance.dto.framework.FrameworkResponse;
+import com.complipilot.backend.compliance.dto.requirement.CreateRequirementRequest;
+import com.complipilot.backend.compliance.dto.requirement.RequirementResponse;
 import com.complipilot.backend.compliance.service.ComplianceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,20 +36,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class ComplianceController {
 
     private final ComplianceService complianceService;
+    private final PlatformAdminService platformAdminService;
 
-    public ComplianceController(ComplianceService complianceService) {
+    public ComplianceController(
+            ComplianceService complianceService,
+            PlatformAdminService platformAdminService
+    ) {
         this.complianceService = complianceService;
+        this.platformAdminService = platformAdminService;
     }
 
     @Operation(
             summary = "Create compliance framework",
+            description = "Platform-admin only. Creates a global compliance framework template.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @PostMapping("/api/v1/compliance/frameworks")
     public ResponseEntity<FrameworkResponse> createFramework(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
             @Valid @RequestBody CreateFrameworkRequest request
     ) {
+        platformAdminService.requirePlatformAdmin(authenticatedUser);
+
         FrameworkResponse response = complianceService.createFramework(request);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -64,13 +74,17 @@ public class ComplianceController {
 
     @Operation(
             summary = "Create requirement under a framework",
+            description = "Platform-admin only. Creates a global requirement template under a framework.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @PostMapping("/api/v1/compliance/frameworks/{frameworkId}/requirements")
     public ResponseEntity<RequirementResponse> createRequirement(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
             @PathVariable UUID frameworkId,
             @Valid @RequestBody CreateRequirementRequest request
     ) {
+        platformAdminService.requirePlatformAdmin(authenticatedUser);
+
         RequirementResponse response = complianceService.createRequirement(
                 frameworkId,
                 request
@@ -92,12 +106,17 @@ public class ComplianceController {
 
     @Operation(
             summary = "Seed SME Security Baseline template",
-            description = "Creates a starter compliance framework and baseline requirements for local development/demo.",
+            description = "Platform-admin only. Creates a starter compliance framework and baseline requirements.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     @PostMapping("/api/v1/compliance/frameworks/seed/security-baseline")
-    public ResponseEntity<FrameworkResponse> seedSecurityBaselineTemplate() {
+    public ResponseEntity<FrameworkResponse> seedSecurityBaselineTemplate(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        platformAdminService.requirePlatformAdmin(authenticatedUser);
+
         FrameworkResponse response = complianceService.seedSecurityBaselineTemplate();
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -167,7 +186,7 @@ public class ComplianceController {
             @PathVariable UUID organizationId,
             @PathVariable UUID itemId,
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-            @RequestBody UpdateCompanyComplianceItemRequest request
+            @Valid @RequestBody UpdateCompanyComplianceItemRequest request
     ) {
         return ResponseEntity.ok(
                 complianceService.updateCompanyComplianceItem(

@@ -50,4 +50,5 @@ public interface OrganizationMemberRepository extends JpaRepository<Organization
             OrganizationMemberRole role,
             OrganizationMemberStatus status
     );
+
 }
