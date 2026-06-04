@@ -58,6 +58,15 @@ public class Organization {
         this.updatedAt = now;
     }
 
+    public void rename(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Organization name must not be blank");
+        }
+
+        this.name = name.trim();
+    }
+
+
     @PreUpdate
     void onUpdate() {
         this.updatedAt = Instant.now();
