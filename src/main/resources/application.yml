@@ -94,6 +94,13 @@ app:
   frontend:
     base-url: "${APP_FRONTEND_BASE_URL:http://localhost:3000}"
 
+  mail:
+    enabled: "${MAIL_ENABLED:false}"
+    provider: "${MAIL_PROVIDER:resend}"
+    from: "${MAIL_FROM:CompliPilot <onboarding@resend.dev>}"
+    resend:
+      api-key: "${RESEND_API_KEY:}"
+
 info:
   app:
     name: CompliPilot Backend

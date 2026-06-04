@@ -18,6 +18,7 @@ import com.complipilot.backend.common.error.ForbiddenException;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
+import com.complipilot.backend.mail.EmailService;
 import com.complipilot.backend.notification.enums.NotificationType;
 import com.complipilot.backend.notification.service.NotificationService;
 import com.complipilot.backend.organization.dto.AcceptOrganizationInvitationRequest;
@@ -52,6 +53,7 @@ public class OrganizationInvitationService {
     private final UsageQuotaService usageQuotaService;
     private final String frontendBaseUrl;
     private final NotificationService notificationService;
+    private final EmailService emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OrganizationInvitationService(
@@ -63,6 +65,7 @@ public class OrganizationInvitationService {
             TenantAccessService tenantAccessService,
             UsageQuotaService usageQuotaService,
             NotificationService notificationService,
+            EmailService emailService,
             @Value("${app.frontend.base-url:http://localhost:3000}") String frontendBaseUrl
     ) {
         this.organizationRepository = organizationRepository;
@@ -73,6 +76,7 @@ public class OrganizationInvitationService {
         this.tenantAccessService = tenantAccessService;
         this.usageQuotaService = usageQuotaService;
         this.notificationService = notificationService;
+        this.emailService = emailService;
         this.frontendBaseUrl = normalizeBaseUrl(frontendBaseUrl);
     }
 
@@ -132,7 +136,17 @@ public class OrganizationInvitationService {
                 )
         );
 
-        return toResponse(invitation, rawToken);
+        OrganizationInvitationResponse response = toResponse(invitation, rawToken);
+
+        emailService.sendInvitationEmail(
+                invitation.getEmail(),
+                invitation.getOrganization().getName(),
+                invitation.getInvitedByUser().getEmail(),
+                invitation.getRole().name(),
+                response.acceptUrl()
+        );
+
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -286,7 +300,17 @@ public class OrganizationInvitationService {
                 Instant.now().plus(INVITATION_TTL)
         );
 
-        return toResponse(invitation, rawToken);
+        OrganizationInvitationResponse response = toResponse(invitation, rawToken);
+
+        emailService.sendInvitationEmail(
+                invitation.getEmail(),
+                invitation.getOrganization().getName(),
+                invitation.getInvitedByUser().getEmail(),
+                invitation.getRole().name(),
+                response.acceptUrl()
+        );
+
+        return response;
     }
 
     private void validateAssignableRole(
