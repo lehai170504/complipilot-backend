@@ -10,6 +10,8 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.complipilot.backend.billing.service.UsageQuotaService;
 import com.complipilot.backend.common.error.BadRequestException;
@@ -43,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrganizationInvitationService {
 
     private static final Duration INVITATION_TTL = Duration.ofDays(7);
+    private static final Logger log = LoggerFactory.getLogger(OrganizationInvitationService.class);
 
     private final OrganizationRepository organizationRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
@@ -138,13 +141,7 @@ public class OrganizationInvitationService {
 
         OrganizationInvitationResponse response = toResponse(invitation, rawToken);
 
-        emailService.sendInvitationEmail(
-                invitation.getEmail(),
-                invitation.getOrganization().getName(),
-                invitation.getInvitedByUser().getEmail(),
-                invitation.getRole().name(),
-                response.acceptUrl()
-        );
+        sendInvitationEmailBestEffort(invitation, response);
 
         return response;
     }
@@ -302,13 +299,7 @@ public class OrganizationInvitationService {
 
         OrganizationInvitationResponse response = toResponse(invitation, rawToken);
 
-        emailService.sendInvitationEmail(
-                invitation.getEmail(),
-                invitation.getOrganization().getName(),
-                invitation.getInvitedByUser().getEmail(),
-                invitation.getRole().name(),
-                response.acceptUrl()
-        );
+        sendInvitationEmailBestEffort(invitation, response);
 
         return response;
     }
@@ -439,5 +430,27 @@ public class OrganizationInvitationService {
                 member.getCreatedAt(),
                 member.getUpdatedAt()
         );
+    }
+
+    private void sendInvitationEmailBestEffort(
+            OrganizationInvitation invitation,
+            OrganizationInvitationResponse response
+    ) {
+        try {
+            emailService.sendInvitationEmail(
+                    invitation.getEmail(),
+                    invitation.getOrganization().getName(),
+                    invitation.getInvitedByUser().getEmail(),
+                    invitation.getRole().name(),
+                    response.acceptUrl()
+            );
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Invitation email delivery failed, but invitation was created. invitationId={}, email={}, error={}",
+                    invitation.getId(),
+                    invitation.getEmail(),
+                    exception.getMessage()
+            );
+        }
     }
 }
