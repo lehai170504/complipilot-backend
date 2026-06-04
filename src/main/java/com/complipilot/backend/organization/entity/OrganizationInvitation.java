@@ -171,4 +171,10 @@ public class OrganizationInvitation {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public void regenerateToken(String tokenHash, Instant expiresAt) {
+        this.tokenHash = tokenHash;
+        this.expiresAt = expiresAt;
+        this.status = OrganizationInvitationStatus.PENDING;
+    }
 }

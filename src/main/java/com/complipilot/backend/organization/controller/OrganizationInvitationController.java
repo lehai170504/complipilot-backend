@@ -121,4 +121,24 @@ public class OrganizationInvitationController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(
+            summary = "Regenerate organization invitation link",
+            description = "Creates a new one-time invitation link for a pending invitation.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PostMapping("/api/v1/organizations/{organizationId}/invitations/{invitationId}/regenerate-link")
+    public ResponseEntity<OrganizationInvitationResponse> regenerateInvitationLink(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID invitationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                organizationInvitationService.regenerateInvitationLink(
+                        organizationId,
+                        invitationId,
+                        authenticatedUser.id()
+                )
+        );
+    }
 }

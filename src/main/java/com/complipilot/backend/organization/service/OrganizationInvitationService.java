@@ -241,6 +241,38 @@ public class OrganizationInvitationService {
         invitation.revoke();
     }
 
+    @Transactional
+    public OrganizationInvitationResponse regenerateInvitationLink(
+            UUID organizationId,
+            UUID invitationId,
+            UUID actorUserId
+    ) {
+        OrganizationMember actorMember = tenantAccessService.requireAdminRole(
+                organizationId,
+                actorUserId
+        );
+
+        OrganizationInvitation invitation = invitationRepository
+                .findByIdAndOrganization_Id(invitationId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization invitation not found"));
+
+        validateAssignableRole(actorMember, invitation.getRole());
+
+        if (!invitation.isPending()) {
+            throw new ConflictException("Only pending invitations can be regenerated");
+        }
+
+        String rawToken = generateToken();
+        String tokenHash = hashToken(rawToken);
+
+        invitation.regenerateToken(
+                tokenHash,
+                Instant.now().plus(INVITATION_TTL)
+        );
+
+        return toResponse(invitation, rawToken);
+    }
+
     private void validateAssignableRole(
             OrganizationMember actorMember,
             OrganizationMemberRole targetRole
