@@ -11,6 +11,7 @@ import com.complipilot.backend.billing.enums.SubscriptionStatus;
 import com.complipilot.backend.billing.repository.OrganizationSubscriptionRepository;
 import com.complipilot.backend.billing.repository.OrganizationUsageCounterRepository;
 import com.complipilot.backend.billing.service.UsageQuotaService;
+import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
 import com.complipilot.backend.common.security.PlatformAdminService;
@@ -23,6 +24,7 @@ import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.platform.dto.PlatformOrganizationResponse;
 import com.complipilot.backend.platform.dto.PlatformUserResponse;
 
+import com.complipilot.backend.platform.dto.UpdateOrganizationSubscriptionRequest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -111,6 +113,31 @@ public class PlatformAdminApiService {
             UUID organizationId
     ) {
         platformAdminService.requirePlatformAdmin(authenticatedUser);
+
+        return usageQuotaService.getOrganizationUsage(organizationId);
+    }
+
+    @Transactional
+    public OrganizationUsageResponse updateOrganizationSubscription(
+            AuthenticatedUser authenticatedUser,
+            UUID organizationId,
+            UpdateOrganizationSubscriptionRequest request
+    ) {
+        platformAdminService.requirePlatformAdmin(authenticatedUser);
+
+        Organization organization = organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization not found"));
+
+        OrganizationSubscription subscription = subscriptionRepository
+                .findByOrganization_Id(organizationId)
+                .orElseGet(() -> subscriptionRepository.save(
+                        new OrganizationSubscription(
+                                organization,
+                                request.plan()
+                        )
+                ));
+
+        subscription.changePlan(request.plan());
 
         return usageQuotaService.getOrganizationUsage(organizationId);
     }

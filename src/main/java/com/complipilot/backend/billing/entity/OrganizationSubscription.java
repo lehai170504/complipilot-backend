@@ -60,6 +60,11 @@ public class OrganizationSubscription {
         this.currentPeriodStartedAt = Instant.now();
     }
 
+    public void changePlan(SubscriptionPlan plan) {
+        this.plan = plan;
+        this.status = SubscriptionStatus.ACTIVE;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
