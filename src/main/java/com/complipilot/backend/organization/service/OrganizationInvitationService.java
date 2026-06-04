@@ -18,6 +18,8 @@ import com.complipilot.backend.common.error.ForbiddenException;
 import com.complipilot.backend.common.error.NotFoundException;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
+import com.complipilot.backend.notification.enums.NotificationType;
+import com.complipilot.backend.notification.service.NotificationService;
 import com.complipilot.backend.organization.dto.AcceptOrganizationInvitationRequest;
 import com.complipilot.backend.organization.dto.CreateOrganizationInvitationRequest;
 import com.complipilot.backend.organization.dto.OrganizationInvitationResponse;
@@ -49,6 +51,7 @@ public class OrganizationInvitationService {
     private final TenantAccessService tenantAccessService;
     private final UsageQuotaService usageQuotaService;
     private final String frontendBaseUrl;
+    private final NotificationService notificationService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OrganizationInvitationService(
@@ -59,6 +62,7 @@ public class OrganizationInvitationService {
             PasswordEncoder passwordEncoder,
             TenantAccessService tenantAccessService,
             UsageQuotaService usageQuotaService,
+            NotificationService notificationService,
             @Value("${app.frontend.base-url:http://localhost:3000}") String frontendBaseUrl
     ) {
         this.organizationRepository = organizationRepository;
@@ -68,6 +72,7 @@ public class OrganizationInvitationService {
         this.passwordEncoder = passwordEncoder;
         this.tenantAccessService = tenantAccessService;
         this.usageQuotaService = usageQuotaService;
+        this.notificationService = notificationService;
         this.frontendBaseUrl = normalizeBaseUrl(frontendBaseUrl);
     }
 
@@ -213,6 +218,17 @@ public class OrganizationInvitationService {
 
         OrganizationMember savedMember = organizationMemberRepository.save(member);
         invitation.accept(user);
+
+        notificationService.notifyUser(
+                invitation.getOrganization().getId(),
+                invitation.getInvitedByUser().getId(),
+                NotificationType.INVITATION_ACCEPTED,
+                "Invitation accepted",
+                user.getEmail() + " accepted the invitation to join "
+                        + invitation.getOrganization().getName(),
+                "ORGANIZATION_INVITATION",
+                invitation.getId()
+        );
 
         return toMemberResponse(savedMember);
     }
