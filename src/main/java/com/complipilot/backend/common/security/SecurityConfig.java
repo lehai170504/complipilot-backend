@@ -57,13 +57,16 @@ public class SecurityConfig {
                                 "/api/v1/health",
                                 "/actuator/health",
                                 "/actuator/info",
+
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout",
+
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
+
                                 "/api/v1/organization-invitations/*",
                                 "/api/v1/organization-invitations/*/accept"
                         ).permitAll()
@@ -83,6 +86,18 @@ public class SecurityConfig {
                             );
 
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            objectMapper.writeValue(response.getWriter(), errorResponse);
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            ApiErrorResponse errorResponse = ApiErrorResponse.of(
+                                    HttpServletResponse.SC_FORBIDDEN,
+                                    "Forbidden",
+                                    "You do not have permission to access this resource",
+                                    request.getRequestURI()
+                            );
+
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                             objectMapper.writeValue(response.getWriter(), errorResponse);
                         })
