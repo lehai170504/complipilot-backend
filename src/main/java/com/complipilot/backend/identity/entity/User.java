@@ -58,6 +58,14 @@ public class User {
         this.fullName = fullName.trim();
     }
 
+    public void changePassword(String passwordHash) {
+        if (passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("Password hash must not be blank");
+        }
+
+        this.passwordHash = passwordHash;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

@@ -1,6 +1,7 @@
 package com.complipilot.backend.identity.controller;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
+import com.complipilot.backend.identity.dto.ChangePasswordRequest;
 import com.complipilot.backend.identity.dto.UpdateUserProfileRequest;
 import com.complipilot.backend.identity.dto.UserProfileResponse;
 import com.complipilot.backend.identity.service.UserProfileService;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,5 +57,22 @@ public class UserProfileController {
                         request
                 )
         );
+    }
+
+    @Operation(
+            summary = "Change current user password",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PatchMapping("/api/v1/profile/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        userProfileService.changePassword(
+                authenticatedUser.id(),
+                request
+        );
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
