@@ -5,11 +5,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.complipilot.backend.common.error.ConflictException;
 import com.complipilot.backend.common.error.ForbiddenException;
 
 import com.complipilot.backend.organization.entity.OrganizationMember;
 import com.complipilot.backend.organization.enums.OrganizationMemberRole;
 import com.complipilot.backend.organization.enums.OrganizationMemberStatus;
+import com.complipilot.backend.organization.enums.OrganizationStatus;
 import com.complipilot.backend.organization.repository.OrganizationMemberRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,28 @@ public class TenantAccessService {
 
     @Transactional(readOnly = true)
     public OrganizationMember requireActiveMember(
+            UUID organizationId,
+            UUID userId
+    ) {
+        OrganizationMember member = organizationMemberRepository
+                .findByOrganization_IdAndUser_IdAndStatus(
+                        organizationId,
+                        userId,
+                        OrganizationMemberStatus.ACTIVE
+                )
+                .orElseThrow(() -> new ForbiddenException(
+                        "You do not have access to this organization"
+                ));
+
+        if (member.getOrganization().getStatus() == OrganizationStatus.DISABLED) {
+            throw new ConflictException("Organization workspace is disabled");
+        }
+
+        return member;
+    }
+
+    @Transactional(readOnly = true)
+    public OrganizationMember requireActiveMemberIncludingDisabledWorkspace(
             UUID organizationId,
             UUID userId
     ) {

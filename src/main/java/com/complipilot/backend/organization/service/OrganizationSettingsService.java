@@ -40,7 +40,10 @@ public class OrganizationSettingsService {
             UUID organizationId,
             UUID currentUserId
     ) {
-        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+        tenantAccessService.requireActiveMemberIncludingDisabledWorkspace(
+                organizationId,
+                currentUserId
+        );
 
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new NotFoundException("Organization not found"));
