@@ -50,6 +50,14 @@ public class User {
         this.status = UserStatus.ACTIVE;
     }
 
+    public void updateProfile(String fullName) {
+        if (fullName == null || fullName.isBlank()) {
+            throw new IllegalArgumentException("Full name must not be blank");
+        }
+
+        this.fullName = fullName.trim();
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
