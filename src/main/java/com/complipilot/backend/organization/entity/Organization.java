@@ -66,6 +66,9 @@ public class Organization {
         this.name = name.trim();
     }
 
+    public void disable() {
+        this.status = OrganizationStatus.DISABLED;
+    }
 
     @PreUpdate
     void onUpdate() {

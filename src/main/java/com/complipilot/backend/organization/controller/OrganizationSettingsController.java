@@ -3,6 +3,7 @@ package com.complipilot.backend.organization.controller;
 import java.util.UUID;
 
 import com.complipilot.backend.common.security.AuthenticatedUser;
+import com.complipilot.backend.organization.dto.DisableOrganizationRequest;
 import com.complipilot.backend.organization.dto.OrganizationSettingsResponse;
 import com.complipilot.backend.organization.dto.UpdateOrganizationSettingsRequest;
 import com.complipilot.backend.organization.service.OrganizationSettingsService;
@@ -61,6 +62,26 @@ public class OrganizationSettingsController {
     ) {
         return ResponseEntity.ok(
                 organizationSettingsService.updateSettings(
+                        organizationId,
+                        authenticatedUser.id(),
+                        request
+                )
+        );
+    }
+
+    @Operation(
+            summary = "Disable organization workspace",
+            description = "Owner-only danger-zone action. Disables a workspace without deleting data.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PatchMapping("/api/v1/organizations/{organizationId}/settings/disable")
+    public ResponseEntity<OrganizationSettingsResponse> disableWorkspace(
+            @PathVariable UUID organizationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @Valid @RequestBody DisableOrganizationRequest request
+    ) {
+        return ResponseEntity.ok(
+                organizationSettingsService.disableWorkspace(
                         organizationId,
                         authenticatedUser.id(),
                         request

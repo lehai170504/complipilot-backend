@@ -5,5 +5,6 @@ public enum AuditResourceType {
     COMPLIANCE_ITEM,
     EVIDENCE_DOCUMENT,
     EVIDENCE_LINK,
-    COMPLIANCE_TASK
+    COMPLIANCE_TASK,
+    ORGANIZATION
 }
