@@ -133,6 +133,25 @@ public class AuditService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<AuditEventResponse> listCurrentUserActivity(
+            UUID currentUserId,
+            int page,
+            int size
+    ) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+
+        return PageResponse.from(
+                auditEventRepository
+                        .findByActorUser_IdOrderByCreatedAtDesc(
+                                currentUserId,
+                                PageRequest.of(safePage, safeSize)
+                        )
+                        .map(this::toResponse)
+        );
+    }
+
     private AuditEventResponse toResponse(AuditEvent auditEvent) {
         UUID actorUserId = auditEvent.getActorUser() == null
                 ? null

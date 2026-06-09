@@ -18,6 +18,11 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID> {
 
     Page<AuditEvent> findByOrganization_Id(UUID organizationId, Pageable pageable);
 
+    Page<AuditEvent> findByActorUser_IdOrderByCreatedAtDesc(
+            UUID actorUserId,
+            Pageable pageable
+    );
+
     @Query("""
         SELECT event
         FROM AuditEvent event
