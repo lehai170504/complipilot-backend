@@ -2,6 +2,9 @@ package com.complipilot.backend.billing.service;
 
 import java.util.UUID;
 
+import com.complipilot.backend.audit.enums.AuditAction;
+import com.complipilot.backend.audit.enums.AuditResourceType;
+import com.complipilot.backend.audit.service.AuditService;
 import com.complipilot.backend.billing.dto.BillingPlanChangeRequestResponse;
 import com.complipilot.backend.billing.dto.CreateBillingPlanChangeRequest;
 import com.complipilot.backend.billing.entity.BillingPlanChangeRequest;
@@ -36,6 +39,7 @@ public class BillingPlanChangeRequestService {
     private final TenantAccessService tenantAccessService;
     private final PlatformAdminService platformAdminService;
     private final NotificationService notificationService;
+    private final AuditService auditService;
 
     public BillingPlanChangeRequestService(
             BillingPlanChangeRequestRepository requestRepository,
@@ -44,7 +48,8 @@ public class BillingPlanChangeRequestService {
             UserRepository userRepository,
             TenantAccessService tenantAccessService,
             PlatformAdminService platformAdminService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            AuditService auditService
     ) {
         this.requestRepository = requestRepository;
         this.subscriptionRepository = subscriptionRepository;
@@ -53,6 +58,7 @@ public class BillingPlanChangeRequestService {
         this.tenantAccessService = tenantAccessService;
         this.platformAdminService = platformAdminService;
         this.notificationService = notificationService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -104,6 +110,18 @@ public class BillingPlanChangeRequestService {
                         .formatted(subscription.getPlan(), request.requestedPlan()),
                 "BILLING_PLAN_CHANGE_REQUEST",
                 entity.getId()
+        );
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.BILLING_PLAN_CHANGE_REQUESTED,
+                AuditResourceType.BILLING_PLAN_CHANGE_REQUEST,
+                entity.getId(),
+                "Billing plan change requested: %s to %s"
+                        .formatted(subscription.getPlan(), request.requestedPlan()),
+                "{\"currentPlan\":\"%s\",\"requestedPlan\":\"%s\"}"
+                        .formatted(subscription.getPlan(), request.requestedPlan())
         );
 
         return toResponse(entity);
@@ -185,6 +203,22 @@ public class BillingPlanChangeRequestService {
                 request.getId()
         );
 
+        auditService.record(
+                request.getOrganization().getId(),
+                authenticatedUser.id(),
+                AuditAction.BILLING_PLAN_CHANGE_APPROVED,
+                AuditResourceType.BILLING_PLAN_CHANGE_REQUEST,
+                request.getId(),
+                "Billing plan change approved: %s to %s"
+                        .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
+                "{\"currentPlan\":\"%s\",\"requestedPlan\":\"%s\",\"reviewedBy\":\"%s\"}"
+                        .formatted(
+                                request.getCurrentPlan(),
+                                request.getRequestedPlan(),
+                                reviewedByUser.getEmail()
+                        )
+        );
+
         return toResponse(request);
     }
 
@@ -216,6 +250,22 @@ public class BillingPlanChangeRequestService {
                         .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
                 "BILLING_PLAN_CHANGE_REQUEST",
                 request.getId()
+        );
+
+        auditService.record(
+                request.getOrganization().getId(),
+                authenticatedUser.id(),
+                AuditAction.BILLING_PLAN_CHANGE_REJECTED,
+                AuditResourceType.BILLING_PLAN_CHANGE_REQUEST,
+                request.getId(),
+                "Billing plan change rejected: %s to %s"
+                        .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
+                "{\"currentPlan\":\"%s\",\"requestedPlan\":\"%s\",\"reviewedBy\":\"%s\"}"
+                        .formatted(
+                                request.getCurrentPlan(),
+                                request.getRequestedPlan(),
+                                reviewedByUser.getEmail()
+                        )
         );
 
         return toResponse(request);
