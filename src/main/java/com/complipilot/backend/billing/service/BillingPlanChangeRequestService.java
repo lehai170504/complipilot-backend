@@ -16,6 +16,8 @@ import com.complipilot.backend.common.security.AuthenticatedUser;
 import com.complipilot.backend.common.security.PlatformAdminService;
 import com.complipilot.backend.identity.entity.User;
 import com.complipilot.backend.identity.repository.UserRepository;
+import com.complipilot.backend.notification.enums.NotificationType;
+import com.complipilot.backend.notification.service.NotificationService;
 import com.complipilot.backend.organization.entity.Organization;
 import com.complipilot.backend.organization.repository.OrganizationRepository;
 import com.complipilot.backend.organization.service.TenantAccessService;
@@ -33,6 +35,7 @@ public class BillingPlanChangeRequestService {
     private final UserRepository userRepository;
     private final TenantAccessService tenantAccessService;
     private final PlatformAdminService platformAdminService;
+    private final NotificationService notificationService;
 
     public BillingPlanChangeRequestService(
             BillingPlanChangeRequestRepository requestRepository,
@@ -40,7 +43,8 @@ public class BillingPlanChangeRequestService {
             OrganizationRepository organizationRepository,
             UserRepository userRepository,
             TenantAccessService tenantAccessService,
-            PlatformAdminService platformAdminService
+            PlatformAdminService platformAdminService,
+            NotificationService notificationService
     ) {
         this.requestRepository = requestRepository;
         this.subscriptionRepository = subscriptionRepository;
@@ -48,6 +52,7 @@ public class BillingPlanChangeRequestService {
         this.userRepository = userRepository;
         this.tenantAccessService = tenantAccessService;
         this.platformAdminService = platformAdminService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -88,6 +93,17 @@ public class BillingPlanChangeRequestService {
                         subscription.getPlan(),
                         request.requestedPlan()
                 )
+        );
+
+        notificationService.notifyUser(
+                organizationId,
+                currentUserId,
+                NotificationType.BILLING_PLAN_CHANGE_REQUESTED,
+                "Plan change request submitted",
+                "Your request to change from %s to %s has been submitted for platform admin review."
+                        .formatted(subscription.getPlan(), request.requestedPlan()),
+                "BILLING_PLAN_CHANGE_REQUEST",
+                entity.getId()
         );
 
         return toResponse(entity);
@@ -158,6 +174,17 @@ public class BillingPlanChangeRequestService {
         subscription.changePlan(request.getRequestedPlan());
         request.approve(reviewedByUser);
 
+        notificationService.notifyUser(
+                request.getOrganization().getId(),
+                request.getRequestedByUser().getId(),
+                NotificationType.BILLING_PLAN_CHANGE_APPROVED,
+                "Plan change approved",
+                "Your request to change from %s to %s has been approved."
+                        .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
+                "BILLING_PLAN_CHANGE_REQUEST",
+                request.getId()
+        );
+
         return toResponse(request);
     }
 
@@ -179,6 +206,17 @@ public class BillingPlanChangeRequestService {
                 .orElseThrow(() -> new NotFoundException("Reviewer user not found"));
 
         request.reject(reviewedByUser);
+
+        notificationService.notifyUser(
+                request.getOrganization().getId(),
+                request.getRequestedByUser().getId(),
+                NotificationType.BILLING_PLAN_CHANGE_REJECTED,
+                "Plan change rejected",
+                "Your request to change from %s to %s was rejected."
+                        .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
+                "BILLING_PLAN_CHANGE_REQUEST",
+                request.getId()
+        );
 
         return toResponse(request);
     }
