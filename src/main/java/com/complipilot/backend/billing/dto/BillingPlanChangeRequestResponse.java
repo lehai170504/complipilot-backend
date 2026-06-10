@@ -14,6 +14,7 @@ public record BillingPlanChangeRequestResponse(
         String requestedByEmail,
         SubscriptionPlan currentPlan,
         SubscriptionPlan requestedPlan,
+        String requestNote,
         BillingPlanChangeRequestStatus status,
         UUID reviewedByUserId,
         String reviewedByEmail,

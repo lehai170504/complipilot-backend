@@ -97,7 +97,8 @@ public class BillingPlanChangeRequestService {
                         organization,
                         requestedByUser,
                         subscription.getPlan(),
-                        request.requestedPlan()
+                        request.requestedPlan(),
+                        request.requestNote()
                 )
         );
 
@@ -120,8 +121,12 @@ public class BillingPlanChangeRequestService {
                 entity.getId(),
                 "Billing plan change requested: %s to %s"
                         .formatted(subscription.getPlan(), request.requestedPlan()),
-                "{\"currentPlan\":\"%s\",\"requestedPlan\":\"%s\"}"
-                        .formatted(subscription.getPlan(), request.requestedPlan())
+                "{\"currentPlan\":\"%s\",\"requestedPlan\":\"%s\",\"requestNote\":%s}"
+                        .formatted(
+                                subscription.getPlan(),
+                                request.requestedPlan(),
+                                jsonStringOrNull(request.requestNote())
+                        )
         );
 
         return toResponse(entity);
@@ -340,6 +345,19 @@ public class BillingPlanChangeRequestService {
         );
     }
 
+    private String jsonStringOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return "null";
+        }
+
+        return "\"" + value
+                .trim()
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r") + "\"";
+    }
+
     private BillingPlanChangeRequestResponse toResponse(
             BillingPlanChangeRequest request
     ) {
@@ -353,6 +371,7 @@ public class BillingPlanChangeRequestService {
                 request.getRequestedByUser().getEmail(),
                 request.getCurrentPlan(),
                 request.getRequestedPlan(),
+                request.getRequestNote(),
                 request.getStatus(),
                 reviewedByUser == null ? null : reviewedByUser.getId(),
                 reviewedByUser == null ? null : reviewedByUser.getEmail(),

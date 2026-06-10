@@ -43,6 +43,9 @@ public class BillingPlanChangeRequest {
     @Column(name = "requested_plan", nullable = false, length = 50)
     private SubscriptionPlan requestedPlan;
 
+    @Column(name = "request_note")
+    private String requestNote;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private BillingPlanChangeRequestStatus status;
@@ -67,14 +70,24 @@ public class BillingPlanChangeRequest {
             Organization organization,
             User requestedByUser,
             SubscriptionPlan currentPlan,
-            SubscriptionPlan requestedPlan
+            SubscriptionPlan requestedPlan,
+            String requestNote
     ) {
         this.id = UUID.randomUUID();
         this.organization = organization;
         this.requestedByUser = requestedByUser;
         this.currentPlan = currentPlan;
         this.requestedPlan = requestedPlan;
+        this.requestNote = normalizeNote(requestNote);
         this.status = BillingPlanChangeRequestStatus.PENDING;
+    }
+
+    private String normalizeNote(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 
     @PrePersist
@@ -156,5 +169,9 @@ public class BillingPlanChangeRequest {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getRequestNote() {
+        return requestNote;
     }
 }
