@@ -32,4 +32,9 @@ public interface BillingPlanChangeRequestRepository
             UUID organizationId,
             Pageable pageable
     );
+
+    Optional<BillingPlanChangeRequest> findByIdAndOrganization_Id(
+            UUID id,
+            UUID organizationId
+    );
 }

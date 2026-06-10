@@ -85,4 +85,23 @@ public class BillingPlanChangeRequestController {
                 )
         );
     }
+
+    @Operation(
+            summary = "Cancel billing plan change request",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @PatchMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests/{requestId}/cancel")
+    public ResponseEntity<BillingPlanChangeRequestResponse> cancelRequest(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID requestId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(
+                requestService.cancelRequest(
+                        organizationId,
+                        requestId,
+                        authenticatedUser.id()
+                )
+        );
+    }
 }

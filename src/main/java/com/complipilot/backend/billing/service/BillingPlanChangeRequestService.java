@@ -271,6 +271,53 @@ public class BillingPlanChangeRequestService {
         return toResponse(request);
     }
 
+    @Transactional
+    public BillingPlanChangeRequestResponse cancelRequest(
+            UUID organizationId,
+            UUID requestId,
+            UUID currentUserId
+    ) {
+        tenantAccessService.requireAdminRole(organizationId, currentUserId);
+
+        BillingPlanChangeRequest request = requestRepository
+                .findByIdAndOrganization_Id(requestId, organizationId)
+                .orElseThrow(() -> new NotFoundException("Plan change request not found"));
+
+        if (!request.isPending()) {
+            throw new ConflictException("Only pending requests can be cancelled");
+        }
+
+        request.cancel();
+
+        notificationService.notifyUser(
+                organizationId,
+                request.getRequestedByUser().getId(),
+                NotificationType.BILLING_PLAN_CHANGE_CANCELLED,
+                "Plan change request cancelled",
+                "Your request to change from %s to %s has been cancelled."
+                        .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
+                "BILLING_PLAN_CHANGE_REQUEST",
+                request.getId()
+        );
+
+        auditService.record(
+                organizationId,
+                currentUserId,
+                AuditAction.BILLING_PLAN_CHANGE_CANCELLED,
+                AuditResourceType.BILLING_PLAN_CHANGE_REQUEST,
+                request.getId(),
+                "Billing plan change cancelled: %s to %s"
+                        .formatted(request.getCurrentPlan(), request.getRequestedPlan()),
+                "{\"currentPlan\":\"%s\",\"requestedPlan\":\"%s\"}"
+                        .formatted(
+                                request.getCurrentPlan(),
+                                request.getRequestedPlan()
+                        )
+        );
+
+        return toResponse(request);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<BillingPlanChangeRequestResponse> listWorkspaceRequests(
             UUID organizationId,
