@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.complipilot.backend.billing.dto.BillingPlanChangeRequestResponse;
 import com.complipilot.backend.billing.dto.CreateBillingPlanChangeRequest;
 import com.complipilot.backend.billing.service.BillingPlanChangeRequestService;
+import com.complipilot.backend.common.pagination.PageResponse;
 import com.complipilot.backend.common.security.AuthenticatedUser;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,6 +61,27 @@ public class BillingPlanChangeRequestController {
                 requestService.getLatestRequest(
                         organizationId,
                         authenticatedUser.id()
+                )
+        );
+    }
+
+    @Operation(
+            summary = "List billing plan change requests",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @GetMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests")
+    public ResponseEntity<PageResponse<BillingPlanChangeRequestResponse>> listRequests(
+            @PathVariable UUID organizationId,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(
+                requestService.listWorkspaceRequests(
+                        organizationId,
+                        authenticatedUser.id(),
+                        page,
+                        size
                 )
         );
     }

@@ -271,6 +271,28 @@ public class BillingPlanChangeRequestService {
         return toResponse(request);
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<BillingPlanChangeRequestResponse> listWorkspaceRequests(
+            UUID organizationId,
+            UUID currentUserId,
+            int page,
+            int size
+    ) {
+        tenantAccessService.requireActiveMember(organizationId, currentUserId);
+
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+
+        return PageResponse.from(
+                requestRepository
+                        .findByOrganization_IdOrderByCreatedAtDesc(
+                                organizationId,
+                                PageRequest.of(safePage, safeSize)
+                        )
+                        .map(this::toResponse)
+        );
+    }
+
     private BillingPlanChangeRequestResponse toResponse(
             BillingPlanChangeRequest request
     ) {

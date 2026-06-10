@@ -27,4 +27,9 @@ public interface BillingPlanChangeRequestRepository
     );
 
     Page<BillingPlanChangeRequest> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<BillingPlanChangeRequest> findByOrganization_IdOrderByCreatedAtDesc(
+            UUID organizationId,
+            Pageable pageable
+    );
 }
