@@ -14,8 +14,7 @@ public class PlatformAdminService {
     private final Set<String> platformAdminEmails;
 
     public PlatformAdminService(
-            @Value("${app.platform.admin-emails:}") String adminEmails
-    ) {
+            @Value("${app.platform.admin-emails:}") String adminEmails) {
         this.platformAdminEmails = Arrays.stream(adminEmails.split(","))
                 .map(String::trim)
                 .filter(email -> !email.isBlank())
