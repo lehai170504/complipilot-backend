@@ -32,117 +32,112 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final String allowedOrigins;
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final String allowedOrigins;
+        private final ObjectMapper objectMapper = new ObjectMapper()
+                        .registerModule(new JavaTimeModule());
 
-    public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthenticationFilter,
-            @Value("${app.cors.allowed-origins}") String allowedOrigins
-    ) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.allowedOrigins = allowedOrigins;
-    }
+        public SecurityConfig(
+                        JwtAuthenticationFilter jwtAuthenticationFilter,
+                        @Value("${app.cors.allowed-origins}") String allowedOrigins) {
+                this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+                this.allowedOrigins = allowedOrigins;
+        }
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(
-                                "/api/v1/health",
-                                "/actuator/health",
-                                "/actuator/info",
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                return http
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(authorize -> authorize
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                .requestMatchers(
+                                                                "/api/v1/health",
+                                                                "/actuator/health",
+                                                                "/actuator/info",
 
-                                "/api/v1/auth/register",
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/auth/logout",
+                                                                "/api/v1/auth/register",
+                                                                "/api/v1/auth/login",
+                                                                "/api/v1/auth/refresh",
+                                                                "/api/v1/auth/logout",
 
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
+                                                                "/swagger-ui/**",
+                                                                "/swagger-ui.html",
+                                                                "/v3/api-docs/**",
 
-                                "/api/v1/organization-invitations/*",
-                                "/api/v1/organization-invitations/*/accept"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            ApiErrorResponse errorResponse = ApiErrorResponse.of(
-                                    HttpServletResponse.SC_UNAUTHORIZED,
-                                    "Unauthorized",
-                                    "Authentication is required",
-                                    request.getRequestURI()
-                            );
+                                                                "/api/v1/organization-invitations/*",
+                                                                "/api/v1/organization-invitations/*/accept",
 
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            objectMapper.writeValue(response.getWriter(), errorResponse);
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            ApiErrorResponse errorResponse = ApiErrorResponse.of(
-                                    HttpServletResponse.SC_FORBIDDEN,
-                                    "Forbidden",
-                                    "You do not have permission to access this resource",
-                                    request.getRequestURI()
-                            );
+                                                                "/api/v1/webhooks/stripe")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(
+                                                jwtAuthenticationFilter,
+                                                UsernamePasswordAuthenticationFilter.class)
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint((request, response, authException) -> {
+                                                        ApiErrorResponse errorResponse = ApiErrorResponse.of(
+                                                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                                                        "Unauthorized",
+                                                                        "Authentication is required",
+                                                                        request.getRequestURI());
 
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            objectMapper.writeValue(response.getWriter(), errorResponse);
-                        })
-                )
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .build();
-    }
+                                                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                                                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                                                        objectMapper.writeValue(response.getWriter(), errorResponse);
+                                                })
+                                                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                                                        ApiErrorResponse errorResponse = ApiErrorResponse.of(
+                                                                        HttpServletResponse.SC_FORBIDDEN,
+                                                                        "Forbidden",
+                                                                        "You do not have permission to access this resource",
+                                                                        request.getRequestURI());
 
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+                                                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                                                        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                                                        objectMapper.writeValue(response.getWriter(), errorResponse);
+                                                }))
+                                .httpBasic(AbstractHttpConfigurer::disable)
+                                .formLogin(AbstractHttpConfigurer::disable)
+                                .build();
+        }
 
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+        @Bean
+        PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-        configuration.setAllowedOrigins(parseAllowedOrigins());
-        configuration.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of(
-                "X-Request-Id",
-                HttpHeaders.AUTHORIZATION
-        ));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+        @Bean
+        CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+                configuration.setAllowedOrigins(parseAllowedOrigins());
+                configuration.setAllowedMethods(List.of(
+                                "GET",
+                                "POST",
+                                "PUT",
+                                "PATCH",
+                                "DELETE",
+                                "OPTIONS"));
+                configuration.setAllowedHeaders(List.of("*"));
+                configuration.setExposedHeaders(List.of(
+                                "X-Request-Id",
+                                HttpHeaders.AUTHORIZATION));
+                configuration.setAllowCredentials(true);
+                configuration.setMaxAge(3600L);
 
-        return source;
-    }
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
 
-    private List<String> parseAllowedOrigins() {
-        return Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(origin -> !origin.isBlank())
-                .toList();
-    }
+                return source;
+        }
+
+        private List<String> parseAllowedOrigins() {
+                return Arrays.stream(allowedOrigins.split(","))
+                                .map(String::trim)
+                                .filter(origin -> !origin.isBlank())
+                                .toList();
+        }
 }

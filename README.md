@@ -56,47 +56,57 @@ Render AI Service
 
 ## 2. Core Features
 
-### Authentication
+### Authentication & Identity
 
-- Register
-- Login
-- JWT access token authentication
-- Role-based access control
+- Register, Login, Logout
+- JWT access token & refresh token rotation
+- User profile management
+- Change password & profile activity tracking
 
-### Organizations and Workspaces
+### Organizations & Workspaces
 
 - Organization/workspace context
-- Member-based access control
-- Manager/member permissions
+- Member-based access control (Owner, Manager, Member)
+- Organization invitations and onboarding
+- Tenant-level data isolation
 
-### Compliance Management
+### Billing & Subscription
 
-- Compliance items
-- Requirement tracking
-- Evidence linking
+- SaaS subscription plans (Free, Pro, Enterprise)
+- Stripe checkout integration
+- Usage quotas and limits tracking (members, storage, AI credits)
+
+### Compliance & Tasks Management
+
+- Compliance frameworks and localized requirements
+- Apply frameworks to organizations
+- Track company compliance items status
+- Assign compliance tasks and prioritize actions
 
 ### Evidence Management
 
 - Create evidence metadata
-- Upload file evidence
-- Download file evidence through signed URLs
-- Archive evidence
-- Link evidence to compliance items
+- Secure upload/download through Supabase/MinIO signed URLs
+- Versioning and archiving evidence
+- Cross-link evidence to compliance items
 
 ### AI Evidence Analysis
 
-- Analyze evidence using an AI service
-- Generate summary
-- Risk level
-- Confidence score
-- Findings
-- Missing information
-- Suggested actions
-- AI analysis history
+- Analyze evidence using an external AI microservice
+- Generate summary, risk level, and confidence score
+- Discover findings, missing information, and suggested actions
+- Maintain AI analysis history per evidence
 
-### Audit Trail
+### Notifications & Mail
 
-- Records important actions such as evidence creation, update, archive, evidence link creation, and unlink actions
+- In-app notification center for users
+- Email integration (Resend/SMTP) for invitations and alerts
+
+### Reporting & Audit Trail
+
+- System-wide audit logging for all critical operations
+- CSV exports for compliance data
+- Admin platform system status monitoring
 
 ---
 

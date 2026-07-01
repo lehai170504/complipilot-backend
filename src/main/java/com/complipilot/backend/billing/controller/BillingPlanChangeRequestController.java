@@ -21,87 +21,67 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class BillingPlanChangeRequestController {
 
-    private final BillingPlanChangeRequestService requestService;
+        private final BillingPlanChangeRequestService requestService;
 
-    public BillingPlanChangeRequestController(
-            BillingPlanChangeRequestService requestService
-    ) {
-        this.requestService = requestService;
-    }
+        public BillingPlanChangeRequestController(
+                        BillingPlanChangeRequestService requestService) {
+                this.requestService = requestService;
+        }
 
-    @Operation(
-            summary = "Create billing plan change request",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @PostMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests")
-    public ResponseEntity<BillingPlanChangeRequestResponse> createRequest(
-            @PathVariable UUID organizationId,
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-            @Valid @RequestBody CreateBillingPlanChangeRequest request
-    ) {
-        return ResponseEntity.ok(
-                requestService.createRequest(
-                        organizationId,
-                        authenticatedUser.id(),
-                        request
-                )
-        );
-    }
+        @Operation(summary = "Create billing plan change request", security = @SecurityRequirement(name = "bearerAuth"))
+        @PostMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests")
+        public ResponseEntity<BillingPlanChangeRequestResponse> createRequest(
+                        @PathVariable UUID organizationId,
+                        @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                        @Valid @RequestBody CreateBillingPlanChangeRequest request) {
+                return ResponseEntity.ok(
+                                requestService.createRequest(
+                                                organizationId,
+                                                authenticatedUser.id(),
+                                                request));
+        }
 
-    @Operation(
-            summary = "Get latest billing plan change request",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @GetMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests/latest")
-    public ResponseEntity<BillingPlanChangeRequestResponse> getLatestRequest(
-            @PathVariable UUID organizationId,
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
-    ) {
-        return ResponseEntity.ok(
-                requestService.getLatestRequest(
-                        organizationId,
-                        authenticatedUser.id()
-                )
-        );
-    }
+        @Operation(summary = "Get latest billing plan change request", security = @SecurityRequirement(name = "bearerAuth"))
+        @GetMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests/latest")
+        public ResponseEntity<BillingPlanChangeRequestResponse> getLatestRequest(
+                        @PathVariable UUID organizationId,
+                        @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+                BillingPlanChangeRequestResponse response = requestService.getLatestRequest(
+                                organizationId,
+                                authenticatedUser.id());
 
-    @Operation(
-            summary = "List billing plan change requests",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @GetMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests")
-    public ResponseEntity<PageResponse<BillingPlanChangeRequestResponse>> listRequests(
-            @PathVariable UUID organizationId,
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return ResponseEntity.ok(
-                requestService.listWorkspaceRequests(
-                        organizationId,
-                        authenticatedUser.id(),
-                        page,
-                        size
-                )
-        );
-    }
+                if (response == null) {
+                        return ResponseEntity.noContent().build();
+                }
 
-    @Operation(
-            summary = "Cancel billing plan change request",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @PatchMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests/{requestId}/cancel")
-    public ResponseEntity<BillingPlanChangeRequestResponse> cancelRequest(
-            @PathVariable UUID organizationId,
-            @PathVariable UUID requestId,
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
-    ) {
-        return ResponseEntity.ok(
-                requestService.cancelRequest(
-                        organizationId,
-                        requestId,
-                        authenticatedUser.id()
-                )
-        );
-    }
+                return ResponseEntity.ok(response);
+        }
+
+        @Operation(summary = "List billing plan change requests", security = @SecurityRequirement(name = "bearerAuth"))
+        @GetMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests")
+        public ResponseEntity<PageResponse<BillingPlanChangeRequestResponse>> listRequests(
+                        @PathVariable UUID organizationId,
+                        @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "10") int size) {
+                return ResponseEntity.ok(
+                                requestService.listWorkspaceRequests(
+                                                organizationId,
+                                                authenticatedUser.id(),
+                                                page,
+                                                size));
+        }
+
+        @Operation(summary = "Cancel billing plan change request", security = @SecurityRequirement(name = "bearerAuth"))
+        @PatchMapping("/api/v1/organizations/{organizationId}/billing/plan-change-requests/{requestId}/cancel")
+        public ResponseEntity<BillingPlanChangeRequestResponse> cancelRequest(
+                        @PathVariable UUID organizationId,
+                        @PathVariable UUID requestId,
+                        @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+                return ResponseEntity.ok(
+                                requestService.cancelRequest(
+                                                organizationId,
+                                                requestId,
+                                                authenticatedUser.id()));
+        }
 }

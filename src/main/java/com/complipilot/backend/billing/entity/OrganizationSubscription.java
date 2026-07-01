@@ -49,6 +49,15 @@ public class OrganizationSubscription {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Column(name = "stripe_subscription_id")
+    private String stripeSubscriptionId;
+
+    @Column(name = "cancel_at_period_end", nullable = false)
+    private boolean cancelAtPeriodEnd = false;
+
     protected OrganizationSubscription() {
     }
 
@@ -124,5 +133,33 @@ public class OrganizationSubscription {
 
     public boolean isActive() {
         return this.status == SubscriptionStatus.ACTIVE;
+    }
+
+    public String getStripeCustomerId() {
+        return stripeCustomerId;
+    }
+
+    public void setStripeCustomerId(String stripeCustomerId) {
+        this.stripeCustomerId = stripeCustomerId;
+    }
+
+    public String getStripeSubscriptionId() {
+        return stripeSubscriptionId;
+    }
+
+    public void setStripeSubscriptionId(String stripeSubscriptionId) {
+        this.stripeSubscriptionId = stripeSubscriptionId;
+    }
+
+    public boolean isCancelAtPeriodEnd() {
+        return cancelAtPeriodEnd;
+    }
+
+    public void setCancelAtPeriodEnd(boolean cancelAtPeriodEnd) {
+        this.cancelAtPeriodEnd = cancelAtPeriodEnd;
+    }
+
+    public void setCurrentPeriodEndsAt(Instant currentPeriodEndsAt) {
+        this.currentPeriodEndsAt = currentPeriodEndsAt;
     }
 }

@@ -1,4 +1,4 @@
-package com.complipilot.backend.identity;
+package com.complipilot.backend.identity.controller;
 
 import java.util.List;
 
@@ -20,43 +20,29 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class CurrentUserController {
 
-    private final OrganizationMembershipService organizationMembershipService;
+        private final OrganizationMembershipService organizationMembershipService;
 
-    public CurrentUserController(
-            OrganizationMembershipService organizationMembershipService
-    ) {
-        this.organizationMembershipService = organizationMembershipService;
-    }
+        public CurrentUserController(
+                        OrganizationMembershipService organizationMembershipService) {
+                this.organizationMembershipService = organizationMembershipService;
+        }
 
-    @Operation(
-            summary = "Get current user",
-            description = "Returns the currently authenticated user from the JWT access token.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @GetMapping("/api/v1/me")
-    public ResponseEntity<AuthUserResponse> currentUser(
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
-    ) {
-        return ResponseEntity.ok(
-                new AuthUserResponse(
-                        authenticatedUser.id(),
-                        authenticatedUser.email(),
-                        authenticatedUser.fullName()
-                )
-        );
-    }
+        @Operation(summary = "Get current user", description = "Returns the currently authenticated user from the JWT access token.", security = @SecurityRequirement(name = "bearerAuth"))
+        @GetMapping("/api/v1/me")
+        public ResponseEntity<AuthUserResponse> currentUser(
+                        @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+                return ResponseEntity.ok(
+                                new AuthUserResponse(
+                                                authenticatedUser.id(),
+                                                authenticatedUser.email(),
+                                                authenticatedUser.fullName()));
+        }
 
-    @Operation(
-            summary = "Get current user's organizations",
-            description = "Returns active organization memberships for the authenticated user.",
-            security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @GetMapping("/api/v1/me/organizations")
-    public ResponseEntity<List<OrganizationMembershipResponse>> currentUserOrganizations(
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
-    ) {
-        return ResponseEntity.ok(
-                organizationMembershipService.findActiveMemberships(authenticatedUser.id())
-        );
-    }
+        @Operation(summary = "Get current user's organizations", description = "Returns active organization memberships for the authenticated user.", security = @SecurityRequirement(name = "bearerAuth"))
+        @GetMapping("/api/v1/me/organizations")
+        public ResponseEntity<List<OrganizationMembershipResponse>> currentUserOrganizations(
+                        @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+                return ResponseEntity.ok(
+                                organizationMembershipService.findActiveMemberships(authenticatedUser.id()));
+        }
 }

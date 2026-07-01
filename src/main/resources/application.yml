@@ -2,6 +2,9 @@ spring:
   application:
     name: complipilot-backend
 
+  config:
+    import: optional:file:.env[.properties]
+
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
@@ -100,6 +103,13 @@ app:
     from: "${MAIL_FROM:CompliPilot <onboarding@resend.dev>}"
     resend:
       api-key: "${RESEND_API_KEY:}"
+
+  stripe:
+    api-key: "${STRIPE_SECRET_KEY:}"
+    webhook-secret: "${STRIPE_WEBHOOK_SECRET:}"
+    pro-price-id: "${STRIPE_PRO_PRICE_ID:}"
+    business-price-id: "${STRIPE_BUSINESS_PRICE_ID:}"
+    enterprise-price-id: "${STRIPE_ENTERPRISE_PRICE_ID:}"
 
 info:
   app:
