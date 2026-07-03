@@ -28,41 +28,31 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @Operation(
-            summary = "Register a new user and organization",
-            description = "Creates a user account, an organization workspace, and assigns the user as OWNER."
-    )
+    @Operation(summary = "Register a new user and organization", description = "Creates a user account, an organization workspace, and assigns the user as OWNER.")
     @PostMapping("/api/v1/auth/register")
     public ResponseEntity<RegisterResponse> register(
-            @Valid @RequestBody RegisterRequest request
-    ) {
+            @Valid @RequestBody RegisterRequest request) {
         RegisterResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Operation(
-            summary = "Login with email and password",
-            description = "Authenticates a user and returns a JWT access token."
-    )
+    @Operation(summary = "Login with email and password", description = "Authenticates a user and returns a JWT access token.")
     @PostMapping("/api/v1/auth/login")
     public ResponseEntity<LoginResponse> login(
-            @Valid @RequestBody LoginRequest request
-    ) {
+            @Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/api/v1/auth/refresh")
     public ResponseEntity<LoginResponse> refresh(
-            @Valid @RequestBody RefreshTokenRequest request
-    ) {
+            @Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
     }
 
     @PostMapping("/api/v1/auth/logout")
     public ResponseEntity<Void> logout(
-            @Valid @RequestBody LogoutRequest request
-    ) {
+            @Valid @RequestBody LogoutRequest request) {
         authService.logout(request);
         return ResponseEntity.noContent().build();
     }

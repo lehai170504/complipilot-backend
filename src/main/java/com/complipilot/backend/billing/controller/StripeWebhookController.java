@@ -33,26 +33,6 @@ public class StripeWebhookController {
         this.stripeWebhookService = stripeWebhookService;
     }
 
-    @GetMapping("/test-force-upgrade/{organizationId}")
-    public ResponseEntity<String> forceUpgrade(@PathVariable java.util.UUID organizationId) {
-        try {
-            Session session = new Session();
-            session.setClientReferenceId(organizationId.toString());
-            session.setCustomer("cus_test_123");
-            session.setSubscription("sub_test_123");
-            
-            java.util.Map<String, String> metadata = new java.util.HashMap<>();
-            metadata.put("plan", "PRO");
-            session.setMetadata(metadata);
-            
-            stripeWebhookService.handleCheckoutSessionCompleted(session);
-            return ResponseEntity.ok("Force upgraded " + organizationId + " to PRO");
-        } catch (Exception e) {
-            log.error("Force upgrade failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
-    }
-
     @PostMapping
     public ResponseEntity<String> handleStripeWebhook(
             @RequestBody String payload,
