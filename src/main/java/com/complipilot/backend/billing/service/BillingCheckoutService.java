@@ -71,20 +71,23 @@ public class BillingCheckoutService {
         }
 
         try {
-            SessionCreateParams params = SessionCreateParams.builder()
+            SessionCreateParams.Builder builder = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.SUBSCRIPTION)
-                    .setSuccessUrl(frontendBaseUrl + "/billing/success?session_id={CHECKOUT_SESSION_ID}")
-                    .setCancelUrl(frontendBaseUrl + "/billing/cancel")
+                    .setSuccessUrl(frontendBaseUrl + "/dashboard")
+                    .setCancelUrl(frontendBaseUrl + "/dashboard")
                     .setClientReferenceId(organizationId.toString())
                     .putMetadata("plan", request.plan().name())
                     .addLineItem(
                             SessionCreateParams.LineItem.builder()
                                     .setPrice(priceId)
                                     .setQuantity(1L)
-                                    .build())
-                    .build();
+                                    .build());
 
-            Session session = Session.create(params);
+            if (subscription.getStripeCustomerId() != null && !subscription.getStripeCustomerId().isBlank()) {
+                builder.setCustomer(subscription.getStripeCustomerId());
+            }
+
+            Session session = Session.create(builder.build());
 
             return new CheckoutSessionResponse(
                     "STRIPE",
@@ -95,6 +98,35 @@ public class BillingCheckoutService {
         } catch (StripeException e) {
             log.error("Failed to create Stripe checkout session", e);
             throw new ConflictException("Failed to initiate payment. Please try again later.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public com.complipilot.backend.billing.dto.CustomerPortalResponse createCustomerPortalSession(
+            UUID organizationId,
+            UUID currentUserId) {
+        tenantAccessService.requireAdminRole(organizationId, currentUserId);
+
+        OrganizationSubscription subscription = subscriptionRepository
+                .findByOrganization_Id(organizationId)
+                .orElseThrow(() -> new NotFoundException("Organization subscription not found"));
+
+        if (subscription.getStripeCustomerId() == null || subscription.getStripeCustomerId().isBlank()) {
+            throw new ConflictException("No active billing account found. Please upgrade to a paid plan first.");
+        }
+
+        try {
+            com.stripe.param.billingportal.SessionCreateParams params = new com.stripe.param.billingportal.SessionCreateParams.Builder()
+                    .setCustomer(subscription.getStripeCustomerId())
+                    .setReturnUrl(frontendBaseUrl + "/dashboard")
+                    .build();
+
+            com.stripe.model.billingportal.Session session = com.stripe.model.billingportal.Session.create(params);
+
+            return new com.complipilot.backend.billing.dto.CustomerPortalResponse(session.getUrl());
+        } catch (StripeException e) {
+            log.error("Failed to create Stripe customer portal session", e);
+            throw new ConflictException("Failed to access billing portal. Please try again later.");
         }
     }
 
