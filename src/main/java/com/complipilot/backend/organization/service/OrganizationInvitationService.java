@@ -69,8 +69,7 @@ public class OrganizationInvitationService {
             UsageQuotaService usageQuotaService,
             NotificationService notificationService,
             EmailService emailService,
-            @Value("${app.frontend.base-url:http://localhost:3000}") String frontendBaseUrl
-    ) {
+            @Value("${app.frontend.base-url:http://localhost:3000}") String frontendBaseUrl) {
         this.organizationRepository = organizationRepository;
         this.organizationMemberRepository = organizationMemberRepository;
         this.invitationRepository = invitationRepository;
@@ -87,12 +86,10 @@ public class OrganizationInvitationService {
     public OrganizationInvitationResponse createInvitation(
             UUID organizationId,
             UUID actorUserId,
-            CreateOrganizationInvitationRequest request
-    ) {
+            CreateOrganizationInvitationRequest request) {
         OrganizationMember actorMember = tenantAccessService.requireAdminRole(
                 organizationId,
-                actorUserId
-        );
+                actorUserId);
 
         validateAssignableRole(actorMember, request.role());
         usageQuotaService.requireCanAddMember(organizationId);
@@ -112,16 +109,14 @@ public class OrganizationInvitationService {
                 .existsByOrganization_IdAndUser_IdAndStatus(
                         organizationId,
                         existingUser.getId(),
-                        OrganizationMemberStatus.ACTIVE
-                )) {
+                        OrganizationMemberStatus.ACTIVE)) {
             throw new ConflictException("User is already an active member of this organization");
         }
 
         if (invitationRepository.existsByOrganization_IdAndEmailIgnoreCaseAndStatus(
                 organizationId,
                 normalizedEmail,
-                OrganizationInvitationStatus.PENDING
-        )) {
+                OrganizationInvitationStatus.PENDING)) {
             throw new ConflictException("A pending invitation already exists for this email");
         }
 
@@ -135,9 +130,7 @@ public class OrganizationInvitationService {
                         request.role(),
                         tokenHash,
                         invitedByUser,
-                        Instant.now().plus(INVITATION_TTL)
-                )
-        );
+                        Instant.now().plus(INVITATION_TTL)));
 
         OrganizationInvitationResponse response = toResponse(invitation, rawToken);
 
@@ -149,8 +142,7 @@ public class OrganizationInvitationService {
     @Transactional(readOnly = true)
     public List<OrganizationInvitationResponse> listInvitations(
             UUID organizationId,
-            UUID actorUserId
-    ) {
+            UUID actorUserId) {
         tenantAccessService.requireActiveMember(organizationId, actorUserId);
 
         return invitationRepository.findByOrganization_IdOrderByCreatedAtDesc(organizationId)
@@ -174,8 +166,7 @@ public class OrganizationInvitationService {
     @Transactional
     public OrganizationMemberResponse acceptInvitation(
             String token,
-            AcceptOrganizationInvitationRequest request
-    ) {
+            AcceptOrganizationInvitationRequest request) {
         OrganizationInvitation invitation = invitationRepository.findByTokenHash(hashToken(token))
                 .orElseThrow(() -> new NotFoundException("Organization invitation not found"));
 
@@ -197,19 +188,24 @@ public class OrganizationInvitationService {
         usageQuotaService.requireCanAddMember(invitation.getOrganization().getId());
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseGet(() -> userRepository.save(
-                        new User(
-                                normalizedEmail,
-                                passwordEncoder.encode(request.password()),
-                                request.fullName()
-                        )
-                ));
+                .orElseGet(() -> {
+                    if (request.password() == null || request.password().isBlank() || request.password().length() < 8) {
+                        throw new BadRequestException("Password must be at least 8 characters");
+                    }
+                    if (request.fullName() == null || request.fullName().isBlank()) {
+                        throw new BadRequestException("Full name is required");
+                    }
+                    return userRepository.save(
+                            new User(
+                                    normalizedEmail,
+                                    passwordEncoder.encode(request.password()),
+                                    request.fullName()));
+                });
 
         OrganizationMember member = organizationMemberRepository
                 .findByOrganizationIdAndUserId(
                         invitation.getOrganization().getId(),
-                        user.getId()
-                )
+                        user.getId())
                 .orElse(null);
 
         if (member != null && member.getStatus() == OrganizationMemberStatus.ACTIVE) {
@@ -220,8 +216,7 @@ public class OrganizationInvitationService {
             member = new OrganizationMember(
                     invitation.getOrganization(),
                     user,
-                    invitation.getRole()
-            );
+                    invitation.getRole());
         } else {
             member.changeRole(invitation.getRole());
             member.changeStatus(OrganizationMemberStatus.ACTIVE);
@@ -238,8 +233,7 @@ public class OrganizationInvitationService {
                 user.getEmail() + " accepted the invitation to join "
                         + invitation.getOrganization().getName(),
                 "ORGANIZATION_INVITATION",
-                invitation.getId()
-        );
+                invitation.getId());
 
         return toMemberResponse(savedMember);
     }
@@ -248,12 +242,10 @@ public class OrganizationInvitationService {
     public void revokeInvitation(
             UUID organizationId,
             UUID invitationId,
-            UUID actorUserId
-    ) {
+            UUID actorUserId) {
         OrganizationMember actorMember = tenantAccessService.requireAdminRole(
                 organizationId,
-                actorUserId
-        );
+                actorUserId);
 
         OrganizationInvitation invitation = invitationRepository
                 .findByIdAndOrganization_Id(invitationId, organizationId)
@@ -272,12 +264,10 @@ public class OrganizationInvitationService {
     public OrganizationInvitationResponse regenerateInvitationLink(
             UUID organizationId,
             UUID invitationId,
-            UUID actorUserId
-    ) {
+            UUID actorUserId) {
         OrganizationMember actorMember = tenantAccessService.requireAdminRole(
                 organizationId,
-                actorUserId
-        );
+                actorUserId);
 
         OrganizationInvitation invitation = invitationRepository
                 .findByIdAndOrganization_Id(invitationId, organizationId)
@@ -294,8 +284,7 @@ public class OrganizationInvitationService {
 
         invitation.regenerateToken(
                 tokenHash,
-                Instant.now().plus(INVITATION_TTL)
-        );
+                Instant.now().plus(INVITATION_TTL));
 
         OrganizationInvitationResponse response = toResponse(invitation, rawToken);
 
@@ -306,8 +295,7 @@ public class OrganizationInvitationService {
 
     private void validateAssignableRole(
             OrganizationMember actorMember,
-            OrganizationMemberRole targetRole
-    ) {
+            OrganizationMemberRole targetRole) {
         if (targetRole == OrganizationMemberRole.OWNER
                 && actorMember.getRole() != OrganizationMemberRole.OWNER) {
             throw new ForbiddenException("Only an owner can assign the owner role");
@@ -364,8 +352,7 @@ public class OrganizationInvitationService {
 
     private OrganizationInvitationResponse toResponse(
             OrganizationInvitation invitation,
-            String rawToken
-    ) {
+            String rawToken) {
         UUID acceptedByUserId = invitation.getAcceptedByUser() == null
                 ? null
                 : invitation.getAcceptedByUser().getId();
@@ -390,13 +377,11 @@ public class OrganizationInvitationService {
                 invitation.getCreatedAt(),
                 invitation.getUpdatedAt(),
                 rawToken,
-                buildAcceptUrl(rawToken)
-        );
+                buildAcceptUrl(rawToken));
     }
 
     private OrganizationInvitationResponse toResponseWithExpiredStatus(
-            OrganizationInvitation invitation
-    ) {
+            OrganizationInvitation invitation) {
         return new OrganizationInvitationResponse(
                 invitation.getId(),
                 invitation.getOrganization().getId(),
@@ -413,8 +398,7 @@ public class OrganizationInvitationService {
                 invitation.getCreatedAt(),
                 invitation.getUpdatedAt(),
                 null,
-                null
-        );
+                null);
     }
 
     private OrganizationMemberResponse toMemberResponse(OrganizationMember member) {
@@ -428,29 +412,25 @@ public class OrganizationInvitationService {
                 member.getStatus(),
                 member.getJoinedAt(),
                 member.getCreatedAt(),
-                member.getUpdatedAt()
-        );
+                member.getUpdatedAt());
     }
 
     private void sendInvitationEmailBestEffort(
             OrganizationInvitation invitation,
-            OrganizationInvitationResponse response
-    ) {
+            OrganizationInvitationResponse response) {
         try {
             emailService.sendInvitationEmail(
                     invitation.getEmail(),
                     invitation.getOrganization().getName(),
                     invitation.getInvitedByUser().getEmail(),
                     invitation.getRole().name(),
-                    response.acceptUrl()
-            );
+                    response.acceptUrl());
         } catch (RuntimeException exception) {
             log.warn(
                     "Invitation email delivery failed, but invitation was created. invitationId={}, email={}, error={}",
                     invitation.getId(),
                     invitation.getEmail(),
-                    exception.getMessage()
-            );
+                    exception.getMessage());
         }
     }
 }
