@@ -60,9 +60,9 @@ public class BillingCheckoutService {
 
         String priceId = getPriceIdForPlan(request.plan());
 
-        if (priceId == null || priceId.isBlank()) {
+        if (priceId == null || priceId.isBlank() || stripeProperties.getApiKey() == null || stripeProperties.getApiKey().isBlank()) {
             // Fallback for when Stripe is not configured
-            log.warn("Stripe price ID is not configured. Falling back to manual mode.");
+            log.warn("Stripe price ID or API key is not configured. Falling back to manual mode.");
             return new CheckoutSessionResponse(
                     "MANUAL",
                     request.plan(),
