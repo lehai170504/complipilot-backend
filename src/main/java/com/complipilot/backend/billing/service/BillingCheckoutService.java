@@ -98,7 +98,7 @@ public class BillingCheckoutService {
 
         } catch (StripeException e) {
             log.error("Failed to create Stripe checkout session", e);
-            throw new ConflictException("Failed to initiate payment. Please try again later.");
+            throw new ConflictException("Failed to initiate payment. Stripe Error: " + e.getMessage());
         }
     }
 
@@ -127,7 +127,7 @@ public class BillingCheckoutService {
             return new com.complipilot.backend.billing.dto.CustomerPortalResponse(session.getUrl());
         } catch (StripeException e) {
             log.error("Failed to create Stripe customer portal session", e);
-            throw new ConflictException("Failed to access billing portal. Please try again later.");
+            throw new ConflictException("Failed to access billing portal. Stripe Error: " + e.getMessage());
         }
     }
 
