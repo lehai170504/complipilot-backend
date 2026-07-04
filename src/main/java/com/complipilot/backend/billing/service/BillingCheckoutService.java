@@ -15,6 +15,7 @@ import com.complipilot.backend.billing.enums.SubscriptionPlan;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import com.stripe.net.RequestOptions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +89,11 @@ public class BillingCheckoutService {
                 builder.setCustomer(subscription.getStripeCustomerId());
             }
 
-            Session session = Session.create(builder.build());
+            RequestOptions requestOptions = RequestOptions.builder()
+                    .setApiKey(stripeProperties.getApiKey())
+                    .build();
+
+            Session session = Session.create(builder.build(), requestOptions);
 
             return new CheckoutSessionResponse(
                     "STRIPE",
@@ -122,7 +127,12 @@ public class BillingCheckoutService {
                     .setReturnUrl(frontendBaseUrl + "/dashboard")
                     .build();
 
-            com.stripe.model.billingportal.Session session = com.stripe.model.billingportal.Session.create(params);
+            RequestOptions requestOptions = RequestOptions.builder()
+                    .setApiKey(stripeProperties.getApiKey())
+                    .build();
+
+            com.stripe.model.billingportal.Session session = com.stripe.model.billingportal.Session.create(params,
+                    requestOptions);
 
             return new com.complipilot.backend.billing.dto.CustomerPortalResponse(session.getUrl());
         } catch (StripeException e) {
