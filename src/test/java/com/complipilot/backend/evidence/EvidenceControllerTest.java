@@ -490,7 +490,8 @@ class EvidenceControllerTest {
         String body = """
                 {
                   "filename": "mfa-policy.pdf",
-                  "contentType": "application/pdf"
+                  "contentType": "application/pdf",
+                  "fileSizeBytes": 1024
                 }
                 """;
 

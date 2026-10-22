@@ -15,3 +15,63 @@ spring:
 app:
   rate-limit:
     enabled: false
+
+  # Platform-admin-only endpoints (creating/rolling out global compliance frameworks) are
+  # exercised by integration tests that register their own users. Every email used by those
+  # tests must be listed here, otherwise the call returns 403 and the build fails.
+  # Keep this in sync with the emails used in ComplianceControllerTest, AuditControllerTest,
+  # ComplianceTaskControllerTest and EvidenceControllerTest.
+  platform:
+    admin-emails: >-
+      compliance-flow@example.com,
+      duplicate-item@example.com,
+      tenant-a@example.com,
+      tenant-b@example.com,
+      invalid-transition@example.com,
+      valid-transition@example.com,
+      seed-template@example.com,
+      apply-framework@example.com,
+      apply-framework-again@example.com,
+      apply-owner-a@example.com,
+      apply-owner-b@example.com,
+      summary@example.com,
+      summary-owner-a@example.com,
+      summary-owner-b@example.com,
+      due-soon@example.com,
+      overdue@example.com,
+      overdue-compliant@example.com,
+      audit-flow@example.com,
+      audit-order@example.com,
+      audit-filter@example.com,
+      audit-search@example.com,
+      audit-invalid-filter@example.com,
+      audit-owner-a@example.com,
+      audit-owner-b@example.com,
+      audit-sort@example.com,
+      task-crud@example.com,
+      task-summary@example.com,
+      task-overdue@example.com,
+      task-delete@example.com,
+      task-page@example.com,
+      task-filter@example.com,
+      task-owner-a@example.com,
+      task-owner-b@example.com,
+      task-filter-item@example.com,
+      task-invalid-filter@example.com,
+      task-search@example.com,
+      task-invalid-sort@example.com,
+      task-sort@example.com,
+      evidence-crud@example.com,
+      evidence-page@example.com,
+      evidence-filter@example.com,
+      evidence-search@example.com,
+      evidence-sort@example.com,
+      evidence-invalid-filter@example.com,
+      evidence-link@example.com,
+      duplicate-evidence-link@example.com,
+      bad-url-evidence@example.com,
+      evidence-owner-a@example.com,
+      evidence-owner-b@example.com,
+      upload-url@example.com,
+      download-url@example.com,
+      download-url-reject@example.com
